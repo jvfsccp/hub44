@@ -1,0 +1,119 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/poppins/latin-600.css';
+@import '@fontsource/poppins/latin-700.css';
+
+@theme inline {
+  --font-sans: 'Inter', sans-serif;
+  --font-heading: 'Poppins', sans-serif;
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-alt: var(--surface-alt);
+
+  --color-foreground: var(--foreground);
+  --color-foreground-subtle: var(--foreground-subtle);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-destructive: var(--destructive);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
+  --radius-4xl: 3rem;
+}
+
+:root {
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-alt: #f1f5f9;
+
+  --foreground: #0f172a;
+  --foreground-subtle: #475569;
+  --muted-foreground: #64748b;
+
+  --primary: #1d4e89;
+  --primary-hover: #0f2740;
+  --primary-foreground: #f8fafc;
+
+  --secondary: #f2994a;
+  --secondary-hover: #e67e22;
+  --secondary-foreground: #3b2208;
+
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --error: #dc2626;
+  --info: #0ea5e9;
+
+  --card: var(--surface-raised);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--foreground);
+  --accent: var(--surface-alt);
+  --accent-foreground: var(--foreground);
+  --muted: var(--surface-alt);
+  --destructive: var(--error);
+
+  --border: #dce3ea;
+  --input: #e8edf4;
+  --ring: color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/60;
+  }
+
+  html,
+  body,
+  #root {
+    @apply min-h-screen;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    background-image: radial-gradient(
+        circle at 12% 0%,
+        color-mix(in srgb, var(--primary) 12%, transparent) 0%,
+        transparent 45%
+      ),
+      radial-gradient(
+        circle at 100% 90%,
+        color-mix(in srgb, var(--secondary) 12%, transparent) 0%,
+        transparent 42%
+      );
+  }
+}
