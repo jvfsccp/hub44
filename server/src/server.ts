@@ -1,4 +1,6 @@
 import { fastify } from 'fastify'
+import { producer } from './kafka'
+import { startConsumer } from './consumer'
 import {
   serializerCompiler,
   validatorCompiler,
@@ -35,7 +37,31 @@ app.register(ScalarApiReference, {
   routePrefix: '/docs',
 })
 
-app.listen({ port: 3333, host: '0.0.0.0' }).then(() => {
-  console.log('🔥 HTTP server running on http://localhost:3333 !')
-  console.log('📖 Docs available at http://localhost:3333/docs')
+app.post('/test-kafka', async (request, reply) => {
+  await producer.send({
+    topic: 'hub44.test',
+    messages: [
+      { value: 'Mensagem enviada pelo backend ' }
+    ],
+  })
+
+  return {
+    success: true,
+    message: 'Mensagem enviada para o Kafka!',
+  }
 })
+
+async function start() {
+  await producer.connect()
+
+  await startConsumer() // 👈 aqui
+
+  await app.listen({ port: 3333, host: '0.0.0.0' })
+
+  console.log('HTTP server running on http://localhost:3333 !')
+  console.log('Docs available at http://localhost:3333/docs')
+  console.log('Kafka producer connected on localhost:9092')
+  console.log('Kafka consumer running and listening...')
+}
+
+start()
