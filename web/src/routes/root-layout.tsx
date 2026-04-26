@@ -9,6 +9,7 @@ import { LayoutGrid, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ComponentsPreviewPage } from './components-preview-page.tsx'
 import { HomePage } from './home-page.tsx'
+import { LoginPage } from './login-page.tsx'
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -24,6 +25,12 @@ export const componentsPreviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/components-preview',
   component: ComponentsPreviewPage,
+})
+
+export const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
 })
 
 function RootLayout() {
@@ -42,6 +49,9 @@ function RootLayout() {
           <div className="flex items-center gap-2">
             <Button variant="ghost" className="hidden sm:inline-flex" render={<Link to="/" />}>
               Inicio
+            </Button>
+            <Button variant="ghost" className="hidden sm:inline-flex" render={<Link to="/login" />}>
+              Entrar
             </Button>
             <Button variant="secondary" render={<Link to="/components-preview" />}>
               <LayoutGrid className="size-4" />
