@@ -84,17 +84,17 @@ export function HomePage() {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <a
-              href="#acesso"
+            <Link
+              to="/login"
               className={buttonVariants({
                 variant: 'ghost',
                 className: 'hidden sm:inline-flex',
               })}
             >
               Login
-            </a>
-            <a
-              href="#acesso"
+            </Link>
+            <Link
+              to="/cadastro"
               className={buttonVariants({
                 variant: 'default',
                 size: 'lg',
@@ -102,7 +102,7 @@ export function HomePage() {
               })}
             >
               Criar conta
-            </a>
+            </Link>
           </div>
         </div>
       </header>
