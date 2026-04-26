@@ -2,6 +2,7 @@ import { Outlet, createRootRoute, createRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { ComponentsPreviewPage } from './components-preview-page.tsx'
 import { HomePage } from './home-page.tsx'
+import { LoginPage } from './login-page.tsx'
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -19,9 +20,40 @@ export const componentsPreviewRoute = createRoute({
   component: ComponentsPreviewPage,
 })
 
+export const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
+})
+
 function RootLayout() {
   return (
     <>
+      <header className="sticky top-0 z-40 px-6 py-4 sm:px-10 lg:px-16">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between rounded-full bg-surface/80 px-3 py-2 shadow-[0_8px_24px_-10px_rgba(15,23,42,0.3)] backdrop-blur-xl">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 rounded-full px-3 py-2 font-heading text-sm font-semibold text-primary"
+          >
+            <Sparkles className="size-4" />
+            Hub44
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" className="hidden sm:inline-flex" render={<Link to="/" />}>
+              Inicio
+            </Button>
+            <Button variant="ghost" className="hidden sm:inline-flex" render={<Link to="/login" />}>
+              Entrar
+            </Button>
+            <Button variant="secondary" render={<Link to="/components-preview" />}>
+              <LayoutGrid className="size-4" />
+              Components
+            </Button>
+          </div>
+        </div>
+      </header>
+
       <Outlet />
       <TanStackRouterDevtools position="bottom-right" />
     </>
