@@ -177,16 +177,21 @@ export function CadastroForm() {
             autoComplete="new-password"
             aria-invalid={passwordTouched && !!passwordError}
           />
-          <Button
-            type="button"
-            variant="link"
-            className="h-auto w-fit justify-self-end p-0 text-xs"
-            onClick={() => setShowPassword((value) => !value)}
-          >
-            {showPassword ? 'Ocultar' : 'Mostrar'}
-            {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-          </Button>
-          {passwordTouched && passwordError ? <p className="text-sm text-error">{passwordError}</p> : null}
+          <div className="flex items-start justify-between gap-4">
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto w-fit p-0 text-xs"
+              onClick={() => setShowPassword((value) => !value)}
+            >
+              {showPassword ? 'Ocultar' : 'Mostrar'}
+              {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+            </Button>
+
+            {passwordTouched && passwordError ? (
+              <p className="text-right text-sm text-error">{passwordError}</p>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid gap-2">
@@ -203,18 +208,21 @@ export function CadastroForm() {
             autoComplete="new-password"
             aria-invalid={confirmPasswordTouched && !!confirmPasswordError}
           />
-          <Button
-            type="button"
-            variant="link"
-            className="h-auto w-fit justify-self-end p-0 text-xs"
-            onClick={() => setShowConfirmPassword((value) => !value)}
-          >
-            {showConfirmPassword ? 'Ocultar' : 'Mostrar'}
-            {showConfirmPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-          </Button>
-          {confirmPasswordTouched && confirmPasswordError ? (
-            <p className="text-sm text-error">{confirmPasswordError}</p>
-          ) : null}
+          <div className="flex items-start justify-between gap-4">
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto w-fit p-0 text-xs"
+              onClick={() => setShowConfirmPassword((value) => !value)}
+            >
+              {showConfirmPassword ? 'Ocultar' : 'Mostrar'}
+              {showConfirmPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+            </Button>
+
+            {confirmPasswordTouched && confirmPasswordError ? (
+              <p className="text-right text-sm text-error">{confirmPasswordError}</p>
+            ) : null}
+          </div>
         </div>
       </div>
 
