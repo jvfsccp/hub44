@@ -8,6 +8,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { LayoutGrid, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ComponentsPreviewPage } from './components-preview-page.tsx'
+import { CadastroPage } from './cadastro-page.tsx'
 import { HomePage } from './home-page.tsx'
 import { LoginPage } from './login-page.tsx'
 
@@ -31,6 +32,12 @@ export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
+})
+
+export const cadastroRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/cadastro',
+  component: CadastroPage,
 })
 
 function RootLayout() {

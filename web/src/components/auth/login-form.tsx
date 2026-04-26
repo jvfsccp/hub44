@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+type AccountType = 'cliente' | 'lojista'
+
 function getEmailError(email: string) {
   if (!email.trim()) {
     return 'Informe seu e-mail.'
@@ -31,6 +33,7 @@ function getPasswordError(password: string) {
 }
 
 export function LoginForm() {
+  const [accountType, setAccountType] = useState<AccountType>('cliente')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -65,6 +68,28 @@ export function LoginForm() {
 
   return (
   <form className="flex flex-col" onSubmit={handleSubmit} noValidate>
+    <div className="mb-6 grid gap-2">
+      <Label className="text-foreground-subtle">Tipo de acesso</Label>
+      <div className="grid grid-cols-2 gap-2 rounded-xl bg-surface-alt p-1">
+        <Button
+          type="button"
+          variant={accountType === 'cliente' ? 'default' : 'outline'}
+          className="h-10 rounded-lg"
+          onClick={() => setAccountType('cliente')}
+        >
+          Cliente
+        </Button>
+        <Button
+          type="button"
+          variant={accountType === 'lojista' ? 'default' : 'outline'}
+          className="h-10 rounded-lg"
+          onClick={() => setAccountType('lojista')}
+        >
+          Lojista
+        </Button>
+      </div>
+    </div>
+
     <div className="flex flex-col gap-7">
       <div className="grid gap-2">
         <Label htmlFor="login-email" className="text-foreground-subtle">
