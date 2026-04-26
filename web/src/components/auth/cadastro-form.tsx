@@ -1,4 +1,4 @@
-import { LoaderCircle } from 'lucide-react'
+import { Eye, EyeOff, LoaderCircle } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,6 +62,8 @@ export function CadastroForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [nameTouched, setNameTouched] = useState(false)
@@ -167,7 +169,7 @@ export function CadastroForm() {
           </Label>
           <Input
             id="cadastro-password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             onBlur={() => setPasswordTouched(true)}
@@ -175,6 +177,15 @@ export function CadastroForm() {
             autoComplete="new-password"
             aria-invalid={passwordTouched && !!passwordError}
           />
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto w-fit justify-self-end p-0 text-xs"
+            onClick={() => setShowPassword((value) => !value)}
+          >
+            {showPassword ? 'Ocultar' : 'Mostrar'}
+            {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+          </Button>
           {passwordTouched && passwordError ? <p className="text-sm text-error">{passwordError}</p> : null}
         </div>
 
@@ -184,7 +195,7 @@ export function CadastroForm() {
           </Label>
           <Input
             id="cadastro-confirm-password"
-            type="password"
+            type={showConfirmPassword ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             onBlur={() => setConfirmPasswordTouched(true)}
@@ -192,6 +203,15 @@ export function CadastroForm() {
             autoComplete="new-password"
             aria-invalid={confirmPasswordTouched && !!confirmPasswordError}
           />
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto w-fit justify-self-end p-0 text-xs"
+            onClick={() => setShowConfirmPassword((value) => !value)}
+          >
+            {showConfirmPassword ? 'Ocultar' : 'Mostrar'}
+            {showConfirmPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+          </Button>
           {confirmPasswordTouched && confirmPasswordError ? (
             <p className="text-sm text-error">{confirmPasswordError}</p>
           ) : null}
