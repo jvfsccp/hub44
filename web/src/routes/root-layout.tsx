@@ -9,6 +9,7 @@ import { LayoutGrid, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ComponentsPreviewPage } from './components-preview-page.tsx'
 import { CadastroPage } from './cadastro-page.tsx'
+import { ClientePedidosPage } from './cliente-pedidos-page.tsx'
 import { HomePage } from './home-page.tsx'
 import { LoginPage } from './login-page.tsx'
 
@@ -38,6 +39,12 @@ export const cadastroRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cadastro',
   component: CadastroPage,
+})
+
+export const clientePedidosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/cliente/pedidos',
+  component: ClientePedidosPage,
 })
 
 function RootLayout() {
