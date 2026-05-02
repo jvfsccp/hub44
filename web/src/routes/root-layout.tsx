@@ -10,6 +10,10 @@ import { Button } from '@/components/ui/button'
 import { ComponentsPreviewPage } from './components-preview-page.tsx'
 import { CadastroPage } from './cadastro-page.tsx'
 import { HomePage } from './home-page.tsx'
+import { LojistaDashboardPage } from './lojista-dashboard-page.tsx'
+import { LojistaLojaPage } from './lojista-loja-page.tsx'
+import { LojistaPedidosPage } from './lojista-pedidos-page.tsx'
+import { LojistaProdutoNovoPage } from './lojista-produto-novo-page.tsx'
 import { LoginPage } from './login-page.tsx'
 
 export const rootRoute = createRootRoute({
@@ -38,6 +42,30 @@ export const cadastroRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cadastro',
   component: CadastroPage,
+})
+
+export const lojistaDashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/lojista/dashboard',
+  component: LojistaDashboardPage,
+})
+
+export const lojistaPedidosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/lojista/pedidos',
+  component: LojistaPedidosPage,
+})
+
+export const lojistaProdutoNovoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/lojista/produtos/novo',
+  component: LojistaProdutoNovoPage,
+})
+
+export const lojistaLojaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/lojista/loja',
+  component: LojistaLojaPage,
 })
 
 function RootLayout() {
