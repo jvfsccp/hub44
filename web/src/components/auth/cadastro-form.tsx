@@ -1,111 +1,121 @@
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff, LoaderCircle } from 'lucide-react'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ApiError } from '@/lib/api'
+import { register } from '@/lib/auth'
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const cadastroSchema = z
+  .object({
+    name: z.string().trim().min(3, 'O nome precisa ter ao menos 3 caracteres.'),
+    email: z.string().trim().email('Digite um e-mail valido.'),
+    phone: z
+      .string()
+      .trim()
+      .refine(
+        (phone) => phone.replace(/\D/g, '').length >= 10,
+        'Informe um telefone valido com DDD.',
+      ),
+    password: z.string().min(8, 'A senha deve ter no minimo 8 caracteres.'),
+    confirmPassword: z.string().min(1, 'Confirme sua senha.'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas nao conferem.',
+    path: ['confirmPassword'],
+  })
 
+type CadastroFormData = z.infer<typeof cadastroSchema>
 type ProfileType = 'cliente' | 'lojista'
 
-function getNameError(name: string) {
-  if (!name.trim()) {
-    return 'Informe seu nome completo.'
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 11)
+
+  if (digits.length <= 2) {
+    return digits ? `(${digits}` : ''
   }
 
-  if (name.trim().length < 3) {
-    return 'O nome precisa ter ao menos 3 caracteres.'
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
   }
 
-  return ''
-}
-
-function getEmailError(email: string) {
-  if (!email.trim()) {
-    return 'Informe seu e-mail.'
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
   }
 
-  if (!EMAIL_REGEX.test(email.trim())) {
-    return 'Digite um e-mail valido.'
-  }
-
-  return ''
-}
-
-function getPasswordError(password: string) {
-  if (!password) {
-    return 'Informe sua senha.'
-  }
-
-  if (password.length < 6) {
-    return 'A senha deve ter no minimo 6 caracteres.'
-  }
-
-  return ''
-}
-
-function getConfirmPasswordError(password: string, confirmPassword: string) {
-  if (!confirmPassword) {
-    return 'Confirme sua senha.'
-  }
-
-  if (password !== confirmPassword) {
-    return 'As senhas nao conferem.'
-  }
-
-  return ''
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
 }
 
 export function CadastroForm() {
+  const navigate = useNavigate()
   const [profile, setProfile] = useState<ProfileType>('cliente')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [nameTouched, setNameTouched] = useState(false)
-  const [emailTouched, setEmailTouched] = useState(false)
-  const [passwordTouched, setPasswordTouched] = useState(false)
-  const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false)
 
-  const nameError = useMemo(() => getNameError(name), [name])
-  const emailError = useMemo(() => getEmailError(email), [email])
-  const passwordError = useMemo(() => getPasswordError(password), [password])
-  const confirmPasswordError = useMemo(
-    () => getConfirmPasswordError(password, confirmPassword),
-    [password, confirmPassword],
-  )
+  const form = useForm<CadastroFormData>({
+    resolver: zodResolver(cadastroSchema),
+    mode: 'onChange',
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+    },
+  })
 
-  const isFormValid = !nameError && !emailError && !passwordError && !confirmPasswordError
+  const registerMutation = useMutation({
+    mutationFn: register,
+    onSuccess: () => {
+      setFeedback('Conta criada com sucesso. Redirecionando para o login...')
+      setTimeout(() => {
+        navigate({ to: '/login' })
+      }, 900)
+    },
+    onError: (error) => {
+      setFeedback(
+        error instanceof ApiError
+          ? error.message
+          : 'Nao foi possivel criar sua conta. Tente novamente.',
+      )
+    },
+  })
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    setNameTouched(true)
-    setEmailTouched(true)
-    setPasswordTouched(true)
-    setConfirmPasswordTouched(true)
+  function handleSubmit(data: CadastroFormData) {
     setFeedback(null)
 
-    if (!isFormValid) {
+    if (profile === 'lojista') {
+      setFeedback(
+        'O cadastro de lojista ainda sera liberado no fluxo de onboarding.',
+      )
       return
     }
 
-    setLoading(true)
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, 1200)
+    registerMutation.mutate({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      password: data.password,
     })
-
-    setLoading(false)
-    setFeedback(`Cadastro de ${profile} pronto na interface, aguardando integracao com backend.`)
   }
 
+  const errors = form.formState.errors
+  const isLoading = registerMutation.isPending
+  const phoneField = form.register('phone')
+
   return (
-    <form className="flex flex-col" onSubmit={handleSubmit} noValidate>
+    <form
+      className="flex flex-col"
+      onSubmit={form.handleSubmit(handleSubmit)}
+      noValidate
+    >
       <div className="mb-6 grid gap-2">
         <Label className="text-foreground-subtle">Perfil</Label>
         <div className="grid grid-cols-2 gap-2 rounded-xl bg-surface-alt p-1">
@@ -136,14 +146,14 @@ export function CadastroForm() {
           <Input
             id="cadastro-name"
             type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            onBlur={() => setNameTouched(true)}
             placeholder="Ex: Maria Silva"
             autoComplete="name"
-            aria-invalid={nameTouched && !!nameError}
+            aria-invalid={!!errors.name}
+            {...form.register('name')}
           />
-          {nameTouched && nameError ? <p className="text-sm text-error">{nameError}</p> : null}
+          {errors.name?.message ? (
+            <p className="text-sm text-error">{errors.name.message}</p>
+          ) : null}
         </div>
 
         <div className="grid gap-2">
@@ -153,14 +163,37 @@ export function CadastroForm() {
           <Input
             id="cadastro-email"
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            onBlur={() => setEmailTouched(true)}
             placeholder="voce@empresa.com"
             autoComplete="email"
-            aria-invalid={emailTouched && !!emailError}
+            aria-invalid={!!errors.email}
+            {...form.register('email')}
           />
-          {emailTouched && emailError ? <p className="text-sm text-error">{emailError}</p> : null}
+          {errors.email?.message ? (
+            <p className="text-sm text-error">{errors.email.message}</p>
+          ) : null}
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="cadastro-phone" className="text-foreground-subtle">
+            Telefone
+          </Label>
+          <Input
+            id="cadastro-phone"
+            type="tel"
+            placeholder="(11) 99999-9999"
+            autoComplete="tel"
+            aria-invalid={!!errors.phone}
+            {...phoneField}
+            onChange={(event) => {
+              form.setValue('phone', formatPhone(event.target.value), {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }}
+          />
+          {errors.phone?.message ? (
+            <p className="text-sm text-error">{errors.phone.message}</p>
+          ) : null}
         </div>
 
         <div className="grid gap-2">
@@ -170,12 +203,10 @@ export function CadastroForm() {
           <Input
             id="cadastro-password"
             type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            onBlur={() => setPasswordTouched(true)}
             placeholder="Crie uma senha"
             autoComplete="new-password"
-            aria-invalid={passwordTouched && !!passwordError}
+            aria-invalid={!!errors.password}
+            {...form.register('password')}
           />
           <div className="flex items-start justify-between gap-4">
             <Button
@@ -185,28 +216,35 @@ export function CadastroForm() {
               onClick={() => setShowPassword((value) => !value)}
             >
               {showPassword ? 'Ocultar' : 'Mostrar'}
-              {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+              {showPassword ? (
+                <EyeOff className="size-3.5" />
+              ) : (
+                <Eye className="size-3.5" />
+              )}
             </Button>
 
-            {passwordTouched && passwordError ? (
-              <p className="text-right text-sm text-error">{passwordError}</p>
+            {errors.password?.message ? (
+              <p className="text-right text-sm text-error">
+                {errors.password.message}
+              </p>
             ) : null}
           </div>
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="cadastro-confirm-password" className="text-foreground-subtle">
+          <Label
+            htmlFor="cadastro-confirm-password"
+            className="text-foreground-subtle"
+          >
             Confirmar senha
           </Label>
           <Input
             id="cadastro-confirm-password"
             type={showConfirmPassword ? 'text' : 'password'}
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-            onBlur={() => setConfirmPasswordTouched(true)}
             placeholder="Repita a senha"
             autoComplete="new-password"
-            aria-invalid={confirmPasswordTouched && !!confirmPasswordError}
+            aria-invalid={!!errors.confirmPassword}
+            {...form.register('confirmPassword')}
           />
           <div className="flex items-start justify-between gap-4">
             <Button
@@ -216,11 +254,17 @@ export function CadastroForm() {
               onClick={() => setShowConfirmPassword((value) => !value)}
             >
               {showConfirmPassword ? 'Ocultar' : 'Mostrar'}
-              {showConfirmPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+              {showConfirmPassword ? (
+                <EyeOff className="size-3.5" />
+              ) : (
+                <Eye className="size-3.5" />
+              )}
             </Button>
 
-            {confirmPasswordTouched && confirmPasswordError ? (
-              <p className="text-right text-sm text-error">{confirmPasswordError}</p>
+            {errors.confirmPassword?.message ? (
+              <p className="text-right text-sm text-error">
+                {errors.confirmPassword.message}
+              </p>
             ) : null}
           </div>
         </div>
@@ -236,9 +280,9 @@ export function CadastroForm() {
         type="submit"
         variant="secondary"
         className="mt-6 h-12 w-full text-base"
-        disabled={!isFormValid || loading}
+        disabled={!form.formState.isValid || isLoading}
       >
-        {loading ? (
+        {isLoading ? (
           <>
             <LoaderCircle className="size-4 animate-spin" />
             Criando conta...
