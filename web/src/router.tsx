@@ -3,6 +3,10 @@ import {
   cadastroRoute,
   componentsPreviewRoute,
   homeRoute,
+  lojistaDashboardRoute,
+  lojistaLojaRoute,
+  lojistaPedidosRoute,
+  lojistaProdutoNovoRoute,
   loginRoute,
   rootRoute,
 } from './routes/root-layout.tsx'
@@ -12,6 +16,10 @@ const routeTree = rootRoute.addChildren([
   componentsPreviewRoute,
   loginRoute,
   cadastroRoute,
+  lojistaDashboardRoute,
+  lojistaPedidosRoute,
+  lojistaProdutoNovoRoute,
+  lojistaLojaRoute,
 ])
 
 export const router = createRouter({ routeTree })
