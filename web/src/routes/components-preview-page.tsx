@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import {
   ArrowRight,
   BadgeCheck,
@@ -41,6 +42,10 @@ export function ComponentsPreviewPage() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-10 sm:px-10 lg:px-16">
       <header className="space-y-3">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+          <ArrowRight className="size-4 rotate-180" />
+          Voltar para a homepage
+        </Link>
         <h1 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">
           Components Preview
         </h1>
