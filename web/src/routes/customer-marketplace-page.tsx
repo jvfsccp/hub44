@@ -20,7 +20,7 @@ import {
   UserCircle,
   Watch,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import heroImage from '@/assets/stitch/marketplace-hero.png'
 import productBlazerImage from '@/assets/stitch/product-blazer.png'
@@ -147,14 +147,10 @@ export function CustomerMarketplacePage() {
     },
   })
 
-  useEffect(() => {
-    if (currentUserQuery.isError) {
-      navigate({ to: '/login' })
-    }
-  }, [currentUserQuery.isError, navigate])
 
-  const user = currentUserQuery.data?.user
-  const userInitial = user?.name.trim().charAt(0).toUpperCase() ?? 'H'
+
+  const user = currentUserQuery.data?.user ?? null
+  const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() ?? 'H'
 
   return (
     <main className="min-h-screen bg-[#faf8ff] text-[#131b2e]">
@@ -215,18 +211,25 @@ export function CustomerMarketplacePage() {
                 type="button"
                 variant="outline"
                 className="h-11 gap-2 rounded-xl bg-white px-2.5 sm:px-3"
-                onClick={() => setUserMenuOpen((value) => !value)}
+                onClick={() => {
+                  if (!user) {
+                    navigate({ to: '/login' })
+                    return
+                  }
+
+                  setUserMenuOpen((value) => !value)
+                }}
               >
                 <span className="grid size-8 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
                   {userInitial}
                 </span>
                 <span className="hidden max-w-32 truncate text-left sm:block">
-                  {user?.name ?? 'Minha conta'}
+                  {user?.name ?? 'Entrar'}
                 </span>
                 <ChevronDown className="size-4" />
               </Button>
 
-              {userMenuOpen ? (
+              {userMenuOpen && user ? (
                 <div className="absolute right-0 mt-3 w-72 rounded-2xl border border-border/70 bg-white p-3 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.45)]">
                   <div className="rounded-xl bg-surface-alt p-3">
                     <p className="text-sm font-semibold text-foreground">

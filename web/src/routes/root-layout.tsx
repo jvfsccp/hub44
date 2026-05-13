@@ -18,9 +18,24 @@ import { LojistaDashboardPage } from './lojista-dashboard-page.tsx'
 import { LojistaLojaPage } from './lojista-loja-page.tsx'
 import { LojistaPedidosPage } from './lojista-pedidos-page.tsx'
 import { LojistaProdutoNovoPage } from './lojista-produto-novo-page.tsx'
+import ProductDetailsPage from '../pages/ProductDetailsPage'
+import CartPage from '../pages/CartPage'
+import CheckoutPage from '../pages/CheckoutPage'
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
+})
+
+export const cartRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/cart',
+  component: CartPage,
+})
+
+export const checkoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/checkout',
+  component: CheckoutPage,
 })
 
 export const homeRoute = createRoute({
@@ -51,10 +66,17 @@ export const clientePedidosRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cliente/pedidos',
   component: ClientePedidosPage,
+})
 export const customerMarketplaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/marketplace',
   component: CustomerMarketplacePage,
+})
+
+export const productDetailsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/produto/$productId',
+  component: ProductDetailsPage,
 })
 
 export const lojistaDashboardRoute = createRoute({
@@ -132,3 +154,19 @@ function RootLayout() {
     </>
   )
 }
+
+export const routeTree = rootRoute.addChildren([
+  homeRoute,
+  componentsPreviewRoute,
+  loginRoute,
+  cadastroRoute,
+  clientePedidosRoute,
+  customerMarketplaceRoute,
+  productDetailsRoute,
+  lojistaDashboardRoute,
+  lojistaPedidosRoute,
+  lojistaProdutoNovoRoute,
+  lojistaLojaRoute,
+  cartRoute,
+  checkoutRoute,
+])
