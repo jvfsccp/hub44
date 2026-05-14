@@ -10,6 +10,7 @@ import { LayoutGrid, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CarrinhoPage } from './carrinho-page.tsx'
 import { CadastroPage } from './cadastro-page.tsx'
+import { CheckoutPage } from './checkout-page.tsx'
 import { ClientePedidosPage } from './cliente-pedidos-page.tsx'
 import { ComponentsPreviewPage } from './components-preview-page.tsx'
 import { CustomerMarketplacePage } from './customer-marketplace-page.tsx'
@@ -20,6 +21,7 @@ import { LojistaLojaPage } from './lojista-loja-page.tsx'
 import { LojistaPerfilPage } from './lojista-perfil-page.tsx'
 import { LojistaPedidosPage } from './lojista-pedidos-page.tsx'
 import { LojistaProdutoNovoPage } from './lojista-produto-novo-page.tsx'
+import { PedidoSucessoPage } from './pedido-sucesso-page.tsx'
 import { PerfilPage } from './perfil-page.tsx'
 
 export const rootRoute = createRootRoute({
@@ -66,6 +68,18 @@ export const carrinhoRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/carrinho',
   component: CarrinhoPage,
+})
+
+export const checkoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/checkout',
+  component: CheckoutPage,
+})
+
+export const pedidoSucessoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/pedido/sucesso',
+  component: PedidoSucessoPage,
 })
 
 export const perfilRoute = createRoute({

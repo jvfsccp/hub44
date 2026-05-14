@@ -2,6 +2,7 @@ import { createRouter } from '@tanstack/react-router'
 import {
   cadastroRoute,
   carrinhoRoute,
+  checkoutRoute,
   clientePedidosRoute,
   componentsPreviewRoute,
   customerMarketplaceRoute,
@@ -12,6 +13,7 @@ import {
   lojistaPerfilRoute,
   lojistaPedidosRoute,
   lojistaProdutoNovoRoute,
+  pedidoSucessoRoute,
   perfilRoute,
   rootRoute,
 } from './routes/root-layout.tsx'
@@ -24,6 +26,8 @@ const routeTree = rootRoute.addChildren([
   clientePedidosRoute,
   customerMarketplaceRoute,
   carrinhoRoute,
+  checkoutRoute,
+  pedidoSucessoRoute,
   perfilRoute,
   lojistaDashboardRoute,
   lojistaPedidosRoute,

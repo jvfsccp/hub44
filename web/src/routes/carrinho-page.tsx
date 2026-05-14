@@ -210,7 +210,7 @@ export function CarrinhoPage() {
                 <p className="text-xs text-foreground-subtle">Use HUB44 para simular 10% de desconto.</p>
               </div>
 
-              <Button className="h-11 w-full" disabled={items.length === 0}>
+              <Button className="h-11 w-full" disabled={items.length === 0} render={<Link to="/checkout" />}>
                 Ir para pagamento
               </Button>
               <Button variant="secondary" className="h-11 w-full" render={<Link to="/marketplace" />}>
