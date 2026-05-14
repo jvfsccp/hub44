@@ -8,6 +8,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { LayoutGrid, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CarrinhoPage } from './carrinho-page.tsx'
 import { CadastroPage } from './cadastro-page.tsx'
 import { ClientePedidosPage } from './cliente-pedidos-page.tsx'
 import { ComponentsPreviewPage } from './components-preview-page.tsx'
@@ -51,10 +52,18 @@ export const clientePedidosRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cliente/pedidos',
   component: ClientePedidosPage,
+})
+
 export const customerMarketplaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/marketplace',
   component: CustomerMarketplacePage,
+})
+
+export const carrinhoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/carrinho',
+  component: CarrinhoPage,
 })
 
 export const lojistaDashboardRoute = createRoute({
