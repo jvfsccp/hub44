@@ -1,0 +1,23 @@
+meta {
+  name: 01 - Criar loja
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/stores
+  body: multipartForm
+  auth: none
+}
+
+body:multipart-form {
+  name: Cafeteria Centro
+  description: Cafeteria com produtos artesanais
+  logo: @file(./logo.png)
+  banner: @file(./banner.jpg)
+}
+
+docs {
+  Antes de enviar, selecione arquivos reais nos campos logo e banner.
+  Depois do envio, copie o valor de store.id da resposta.
+}
