@@ -1,6 +1,7 @@
 import fastifyCookie from '@fastify/cookie'
 import { fastifyCors } from '@fastify/cors'
 import fastifyJwt from '@fastify/jwt'
+import fastifyMultipart from '@fastify/multipart'
 import { fastifySwagger } from '@fastify/swagger'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import { fastify } from 'fastify'
@@ -13,6 +14,7 @@ import {
 
 import { env } from '@/env'
 import { authRoutes } from '@/routes/auth-routes'
+import { storesRoutes } from '@/routes/stores-routes'
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -35,6 +37,14 @@ app.register(fastifyJwt, {
   },
 })
 
+app.register(fastifyMultipart, {
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 3,
+    fields: 10,
+  },
+})
+
 app.register(fastifySwagger, {
   openapi: {
     info: {
@@ -51,6 +61,7 @@ app.register(ScalarApiReference, {
 })
 
 app.register(authRoutes)
+app.register(storesRoutes)
 
 app
   .listen({ port: env.PORT, host: '0.0.0.0' })
