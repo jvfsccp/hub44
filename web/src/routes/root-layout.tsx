@@ -22,6 +22,7 @@ import { LojistaPerfilPage } from './lojista-perfil-page.tsx'
 import { LojistaPedidosPage } from './lojista-pedidos-page.tsx'
 import { LojistaProdutosPage } from './lojista-produtos-page.tsx'
 import { LojistaProdutoNovoPage } from './lojista-produto-novo-page.tsx'
+import { PedidoDetalhePage } from './pedido-detalhe-page.tsx'
 import { PedidoSucessoPage } from './pedido-sucesso-page.tsx'
 import { PerfilPage } from './perfil-page.tsx'
 
@@ -57,6 +58,12 @@ export const clientePedidosRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cliente/pedidos',
   component: ClientePedidosPage,
+})
+
+export const pedidoDetalheRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/cliente/pedidos/$pedidoId',
+  component: PedidoDetalhePage,
 })
 
 export const customerMarketplaceRoute = createRoute({
