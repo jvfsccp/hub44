@@ -11,6 +11,7 @@ import {
   lojistaLojaRoute,
   lojistaPedidosRoute,
   lojistaProdutoNovoRoute,
+  perfilRoute,
   rootRoute,
 } from './routes/root-layout.tsx'
 
@@ -22,6 +23,7 @@ const routeTree = rootRoute.addChildren([
   clientePedidosRoute,
   customerMarketplaceRoute,
   carrinhoRoute,
+  perfilRoute,
   lojistaDashboardRoute,
   lojistaPedidosRoute,
   lojistaProdutoNovoRoute,

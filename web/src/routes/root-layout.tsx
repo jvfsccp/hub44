@@ -19,6 +19,7 @@ import { LojistaDashboardPage } from './lojista-dashboard-page.tsx'
 import { LojistaLojaPage } from './lojista-loja-page.tsx'
 import { LojistaPedidosPage } from './lojista-pedidos-page.tsx'
 import { LojistaProdutoNovoPage } from './lojista-produto-novo-page.tsx'
+import { PerfilPage } from './perfil-page.tsx'
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -64,6 +65,12 @@ export const carrinhoRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/carrinho',
   component: CarrinhoPage,
+})
+
+export const perfilRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/perfil',
+  component: PerfilPage,
 })
 
 export const lojistaDashboardRoute = createRoute({
