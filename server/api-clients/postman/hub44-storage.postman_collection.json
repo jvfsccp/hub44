@@ -1,0 +1,148 @@
+{
+  "info": {
+    "_postman_id": "d0f7b3b0-52a5-4b9c-a870-4f6a2a7f79b1",
+    "name": "Hub44 Storage API",
+    "description": "Requests para cadastrar lojas e produtos com imagens via multipart/form-data.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Stores",
+      "item": [
+        {
+          "name": "01 - Criar loja",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.store && response.store.id) {",
+                  "  pm.collectionVariables.set('storeId', response.store.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Cafeteria Centro",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Cafeteria com produtos artesanais",
+                  "type": "text"
+                },
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "banner",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stores",
+              "host": ["{{baseUrl}}"],
+              "path": ["stores"]
+            },
+            "description": "Selecione arquivos reais nos campos logo e banner antes de enviar. O teste salva automaticamente storeId nas variaveis da collection."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Criar produto da loja",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.product && response.product.id) {",
+                  "  pm.collectionVariables.set('productId', response.product.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Cafe especial 250g",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Graos selecionados, torra media",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "39.90",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stores/{{storeId}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["stores", "{{storeId}}", "products"]
+            },
+            "description": "Execute primeiro o request 01 - Criar loja. Ele salva storeId automaticamente. Depois selecione uma imagem real no campo image."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3333",
+      "type": "string"
+    },
+    {
+      "key": "storeId",
+      "value": "cole-o-store-id-aqui",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
