@@ -1,0 +1,23 @@
+meta {
+  name: 02 - Criar produto da loja
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/stores/{{storeId}}/products
+  body: multipartForm
+  auth: none
+}
+
+body:multipart-form {
+  name: Cafe especial 250g
+  description: Graos selecionados, torra media
+  price: 39.90
+  image: @file(./produto.jpg)
+}
+
+docs {
+  Antes de enviar, cole o store.id da loja na variavel storeId do ambiente local.
+  Depois selecione uma imagem real no campo image.
+}
