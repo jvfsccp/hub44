@@ -293,6 +293,14 @@ export function ClientePedidosPage() {
                           <Headset className="size-4" />
                           Solicitar suporte
                         </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8"
+                          render={<Link to={`/cliente/pedidos/${order.id.replace('#', '')}`} />}
+                        >
+                          Abrir pagina completa
+                        </Button>
                       </div>
 
                       {orderFeedback[order.id] ? (

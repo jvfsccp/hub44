@@ -8,7 +8,9 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { LayoutGrid, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CarrinhoPage } from './carrinho-page.tsx'
 import { CadastroPage } from './cadastro-page.tsx'
+import { CheckoutPage } from './checkout-page.tsx'
 import { ClientePedidosPage } from './cliente-pedidos-page.tsx'
 import { ComponentsPreviewPage } from './components-preview-page.tsx'
 import { CustomerMarketplacePage } from './customer-marketplace-page.tsx'
@@ -16,8 +18,13 @@ import { HomePage } from './home-page.tsx'
 import { LoginPage } from './login-page.tsx'
 import { LojistaDashboardPage } from './lojista-dashboard-page.tsx'
 import { LojistaLojaPage } from './lojista-loja-page.tsx'
+import { LojistaPerfilPage } from './lojista-perfil-page.tsx'
 import { LojistaPedidosPage } from './lojista-pedidos-page.tsx'
+import { LojistaProdutosPage } from './lojista-produtos-page.tsx'
 import { LojistaProdutoNovoPage } from './lojista-produto-novo-page.tsx'
+import { PedidoDetalhePage } from './pedido-detalhe-page.tsx'
+import { PedidoSucessoPage } from './pedido-sucesso-page.tsx'
+import { PerfilPage } from './perfil-page.tsx'
 import ProductDetailsPage from '../pages/ProductDetailsPage'
 import CartPage from '../pages/CartPage'
 import CheckoutPage from '../pages/CheckoutPage'
@@ -67,12 +74,41 @@ export const clientePedidosRoute = createRoute({
   path: '/cliente/pedidos',
   component: ClientePedidosPage,
 })
+
+export const pedidoDetalheRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/cliente/pedidos/$pedidoId',
+  component: PedidoDetalhePage,
+})
+
 export const customerMarketplaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/marketplace',
   component: CustomerMarketplacePage,
 })
 
+export const carrinhoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/carrinho',
+  component: CarrinhoPage,
+})
+
+export const checkoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/checkout',
+  component: CheckoutPage,
+})
+
+export const pedidoSucessoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/pedido/sucesso',
+  component: PedidoSucessoPage,
+})
+
+export const perfilRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/perfil',
+  component: PerfilPage,
 export const productDetailsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/produto/$productId',
@@ -91,6 +127,12 @@ export const lojistaPedidosRoute = createRoute({
   component: LojistaPedidosPage,
 })
 
+export const lojistaProdutosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/lojista/produtos',
+  component: LojistaProdutosPage,
+})
+
 export const lojistaProdutoNovoRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/lojista/produtos/novo',
@@ -101,6 +143,12 @@ export const lojistaLojaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/lojista/loja',
   component: LojistaLojaPage,
+})
+
+export const lojistaPerfilRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/lojista/perfil',
+  component: LojistaPerfilPage,
 })
 
 function RootLayout() {
