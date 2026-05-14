@@ -9,6 +9,7 @@ import {
   loginRoute,
   lojistaDashboardRoute,
   lojistaLojaRoute,
+  lojistaPerfilRoute,
   lojistaPedidosRoute,
   lojistaProdutoNovoRoute,
   perfilRoute,
@@ -28,6 +29,7 @@ const routeTree = rootRoute.addChildren([
   lojistaPedidosRoute,
   lojistaProdutoNovoRoute,
   lojistaLojaRoute,
+  lojistaPerfilRoute,
 ])
 
 export const router = createRouter({ routeTree })

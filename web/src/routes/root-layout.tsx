@@ -17,6 +17,7 @@ import { HomePage } from './home-page.tsx'
 import { LoginPage } from './login-page.tsx'
 import { LojistaDashboardPage } from './lojista-dashboard-page.tsx'
 import { LojistaLojaPage } from './lojista-loja-page.tsx'
+import { LojistaPerfilPage } from './lojista-perfil-page.tsx'
 import { LojistaPedidosPage } from './lojista-pedidos-page.tsx'
 import { LojistaProdutoNovoPage } from './lojista-produto-novo-page.tsx'
 import { PerfilPage } from './perfil-page.tsx'
@@ -95,6 +96,12 @@ export const lojistaLojaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/lojista/loja',
   component: LojistaLojaPage,
+})
+
+export const lojistaPerfilRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/lojista/perfil',
+  component: LojistaPerfilPage,
 })
 
 function RootLayout() {
