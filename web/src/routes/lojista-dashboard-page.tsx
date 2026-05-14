@@ -31,7 +31,7 @@ const recentOrders = [
 ]
 
 const quickActions = [
-  { label: 'Cadastrar produto', to: '/lojista/produtos/novo', icon: Plus },
+  { label: 'Meus produtos', to: '/lojista/produtos', icon: Plus },
   { label: 'Ver pedidos', to: '/lojista/pedidos', icon: ClipboardList },
   { label: 'Ver loja', to: '/lojista/loja', icon: Store },
 ]
@@ -81,9 +81,9 @@ export function LojistaDashboardPage() {
               Acompanhe o desempenho da operação e priorize as próximas ações comerciais.
             </p>
           </div>
-          <Button variant="secondary" render={<Link to="/lojista/produtos/novo" />}>
+          <Button variant="secondary" render={<Link to="/lojista/produtos" />}>
             <Plus className="size-4" />
-            Novo produto
+            Meus produtos
           </Button>
         </div>
 

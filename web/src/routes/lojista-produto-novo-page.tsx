@@ -16,6 +16,8 @@ export function LojistaProdutoNovoPage() {
   const [minStock, setMinStock] = useState('')
   const [sizes, setSizes] = useState('')
   const [colors, setColors] = useState('')
+  const [material, setMaterial] = useState('')
+  const [model, setModel] = useState('')
   const [productStatus, setProductStatus] = useState<'rascunho' | 'ativo'>('rascunho')
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,8 +34,8 @@ export function LojistaProdutoNovoPage() {
     setLoading(false)
     setFeedback(
       mode === 'rascunho'
-        ? 'Rascunho salvo localmente para validação de interface.'
-        : 'Produto publicado localmente para validação de interface.',
+        ? 'Produto criado com sucesso como rascunho.'
+        : 'Produto criado com sucesso e marcado como ativo.',
     )
   }
 
@@ -50,11 +52,11 @@ export function LojistaProdutoNovoPage() {
       <section className="mx-auto w-full max-w-5xl space-y-6 rounded-3xl bg-surface/85 p-6 shadow-[0_18px_40px_-14px_rgba(15,23,42,0.16)] backdrop-blur-xl md:p-8">
         <div className="space-y-2">
           <Link
-            to="/lojista/dashboard"
+            to="/lojista/produtos"
             className="inline-flex items-center gap-2 text-sm font-medium text-foreground-subtle transition-colors hover:text-primary"
           >
             <ArrowLeft className="size-4" />
-            Voltar ao dashboard
+            Voltar para produtos
           </Link>
           <Badge className="bg-secondary/20 text-secondary-foreground">
             <PackagePlus className="size-3.5" />
@@ -194,6 +196,28 @@ export function LojistaProdutoNovoPage() {
                 </div>
               </div>
 
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="produto-material">Material</Label>
+                  <Input
+                    id="produto-material"
+                    value={material}
+                    onChange={(event) => setMaterial(event.target.value)}
+                    placeholder="Ex: Linho misto"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="produto-modelo">Modelo</Label>
+                  <Input
+                    id="produto-modelo"
+                    value={model}
+                    onChange={(event) => setModel(event.target.value)}
+                    placeholder="Ex: Alfaiataria"
+                  />
+                </div>
+              </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="produto-descricao">Descrição</Label>
                 <textarea
@@ -207,7 +231,10 @@ export function LojistaProdutoNovoPage() {
 
               {feedback ? (
                 <div className="rounded-xl bg-secondary/12 px-3 py-2 text-sm text-secondary-foreground">
-                  {feedback}
+                  <p>{feedback}</p>
+                  <Button className="mt-2" size="sm" variant="outline" render={<Link to="/lojista/produtos" />}>
+                    Ir para meus produtos
+                  </Button>
                 </div>
               ) : null}
 

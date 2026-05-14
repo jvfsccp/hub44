@@ -20,6 +20,7 @@ import { LojistaDashboardPage } from './lojista-dashboard-page.tsx'
 import { LojistaLojaPage } from './lojista-loja-page.tsx'
 import { LojistaPerfilPage } from './lojista-perfil-page.tsx'
 import { LojistaPedidosPage } from './lojista-pedidos-page.tsx'
+import { LojistaProdutosPage } from './lojista-produtos-page.tsx'
 import { LojistaProdutoNovoPage } from './lojista-produto-novo-page.tsx'
 import { PedidoSucessoPage } from './pedido-sucesso-page.tsx'
 import { PerfilPage } from './perfil-page.tsx'
@@ -98,6 +99,12 @@ export const lojistaPedidosRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/lojista/pedidos',
   component: LojistaPedidosPage,
+})
+
+export const lojistaProdutosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/lojista/produtos',
+  component: LojistaProdutosPage,
 })
 
 export const lojistaProdutoNovoRoute = createRoute({
