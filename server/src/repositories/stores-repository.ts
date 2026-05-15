@@ -16,12 +16,33 @@ export class StoresRepository {
     return store ?? null
   }
 
+  async findBySlug(slug: string) {
+    const [store] = await db
+      .select()
+      .from(stores)
+      .where(eq(stores.slug, slug))
+      .limit(1)
+
+    return store ?? null
+  }
+
+  async findByCnpj(cnpj: string) {
+    const [store] = await db
+      .select()
+      .from(stores)
+      .where(eq(stores.cnpj, cnpj))
+      .limit(1)
+
+    return store ?? null
+  }
+
   async create(input: {
-    id: string
+    ownerId: string
     name: string
+    slug: string
     description: string
-    logoUrl: string
-    bannerUrl: string
+    cnpj: string
+    phone: string
   }) {
     const [store] = await db.insert(stores).values(input).returning()
 
