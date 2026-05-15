@@ -16,12 +16,14 @@ import { env } from '@/env'
 import { addressesRoutes } from '@/routes/addresses-routes'
 import { adminRoutes } from '@/routes/admin-routes'
 import { authRoutes } from '@/routes/auth-routes'
+import { cartRoutes } from '@/routes/cart-routes'
 import { catalogRoutes } from '@/routes/catalog-routes'
 import { categoriesRoutes } from '@/routes/categories-routes'
 import { notificationsRoutes } from '@/routes/notifications-routes'
 import { ordersRoutes } from '@/routes/orders-routes'
 import { sellerRoutes } from '@/routes/seller-routes'
 import { storesRoutes } from '@/routes/stores-routes'
+import { usersRoutes } from '@/routes/users-routes'
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -68,6 +70,8 @@ app.register(ScalarApiReference, {
 })
 
 app.register(authRoutes)
+app.register(usersRoutes)
+app.register(cartRoutes)
 app.register(catalogRoutes)
 app.register(categoriesRoutes)
 app.register(storesRoutes)
