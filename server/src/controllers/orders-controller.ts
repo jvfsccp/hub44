@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 
+import { CartService, EmptyCartError } from '@/services/cart-service'
 import { KafkaEventPublishError } from '@/services/kafka-events-service'
 import {
   EmptyOrderError,
@@ -26,6 +27,15 @@ type CreateOrderRequest = FastifyRequest<{
   }
 }>
 
+type CreateOrderFromCartRequest = FastifyRequest<{
+  Body: {
+    addressId?: string | null
+    paymentMethod: PaymentMethod
+    deliveryMethod?: string
+    couponCode?: string | null
+  }
+}>
+
 type GetOrderRequest = FastifyRequest<{
   Params: { orderId: string }
 }>
@@ -39,7 +49,10 @@ type UpdateSellerOrderStatusRequest = FastifyRequest<{
 }>
 
 export class OrdersController {
-  constructor(private readonly ordersService = new OrdersService()) {}
+  constructor(
+    private readonly ordersService = new OrdersService(),
+    private readonly cartService = new CartService(),
+  ) {}
 
   create = async (request: CreateOrderRequest, reply: FastifyReply) => {
     try {
@@ -47,6 +60,28 @@ export class OrdersController {
         customerId: request.user.sub,
         ...request.body,
       })
+
+      return reply.status(201).send({
+        orders: orders.map(toOrderResponse),
+      })
+    } catch (error) {
+      return handleOrderError(error, reply)
+    }
+  }
+
+  createFromCart = async (
+    request: CreateOrderFromCartRequest,
+    reply: FastifyReply,
+  ) => {
+    try {
+      const items = await this.cartService.getActiveOrderItems(request.user.sub)
+      const orders = await this.ordersService.create({
+        customerId: request.user.sub,
+        ...request.body,
+        items,
+      })
+
+      await this.cartService.clearActiveCart(request.user.sub)
 
       return reply.status(201).send({
         orders: orders.map(toOrderResponse),
@@ -105,6 +140,10 @@ export class OrdersController {
 }
 
 function handleOrderError(error: unknown, reply: FastifyReply) {
+  if (error instanceof EmptyCartError) {
+    return reply.status(400).send({ message: error.message })
+  }
+
   if (error instanceof EmptyOrderError) {
     return reply.status(400).send({ message: error.message })
   }
