@@ -59,4 +59,42 @@ export class UsersRepository {
 
     return user ?? null
   }
+
+  async updateProfile(
+    id: string,
+    input: Partial<{
+      name: string
+      email: string
+      phone: string | null
+      cpf: string | null
+      emailNotifications: boolean
+      newsletter: boolean
+      promotions: boolean
+    }>,
+  ) {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...input,
+        ...(input.email ? { email: input.email.toLowerCase() } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning()
+
+    return user ?? null
+  }
+
+  async updatePasswordHash(id: string, passwordHash: string) {
+    const [user] = await db
+      .update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning()
+
+    return user ?? null
+  }
 }
