@@ -13,7 +13,9 @@ import categories from './categories'
 import stores from './stores'
 
 export const productStatuses = pgEnum('product_status', [
+  'draft',
   'active',
+  'paused',
   'inactive',
   'out_of_stock',
 ])

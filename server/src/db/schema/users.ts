@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { boolean, pgEnum, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 import { uuidv7 } from 'uuidv7'
 
 export const userRoles = pgEnum('user_role', ['customer', 'seller', 'admin'])
@@ -11,7 +11,11 @@ const users = pgTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   phone: text('phone'),
+  cpf: text('cpf'),
   role: userRoles('role').notNull().default('customer'),
+  emailNotifications: boolean('email_notifications').notNull().default(true),
+  newsletter: boolean('newsletter').notNull().default(true),
+  promotions: boolean('promotions').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

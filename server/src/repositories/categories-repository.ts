@@ -6,6 +6,10 @@ import categories from '@/db/schema/categories'
 export type Category = typeof categories.$inferSelect
 
 export class CategoriesRepository {
+  async list() {
+    return db.select().from(categories).orderBy(categories.name)
+  }
+
   async findById(id: string) {
     const [category] = await db
       .select()

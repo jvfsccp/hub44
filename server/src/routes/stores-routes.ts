@@ -11,7 +11,13 @@ const storeStatusSchema = z.enum([
   'rejected',
   'inactive',
 ])
-const productStatusSchema = z.enum(['active', 'inactive', 'out_of_stock'])
+const productStatusSchema = z.enum([
+  'draft',
+  'active',
+  'paused',
+  'inactive',
+  'out_of_stock',
+])
 const storeSchema = z.object({
   id: z.string(),
   ownerId: z.string(),
@@ -89,6 +95,7 @@ export const storesRoutes: FastifyPluginAsyncZod = async (app) => {
           description: z.string().trim().min(1).nullable().optional(),
           priceInCents: z.number().int().positive(),
           stock: z.number().int().nonnegative().optional(),
+          status: productStatusSchema.optional(),
         }),
         response: {
           201: z.object({ product: productSchema }),

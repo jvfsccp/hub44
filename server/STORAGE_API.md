@@ -60,16 +60,329 @@ pnpm.cmd run dev
 
 1. Registre ou use um usuario existente.
 2. Faca login e copie o `accessToken`.
-3. Crie uma categoria.
-4. Crie uma loja.
-5. Crie o endereco da loja.
-6. Crie os produtos da loja.
-7. Envie a imagem de cada produto.
+3. Para lojistas, rode o onboarding de loja.
+4. Crie uma categoria.
+5. Crie os produtos da loja.
+6. Envie a imagem de cada produto.
 
 As rotas de categoria, loja, produto e endereco exigem:
 
 ```http
 Authorization: Bearer ACCESS_TOKEN
+```
+
+## Onboarding de lojista
+
+O caminho recomendado para transformar uma conta comum em lojista e criar a
+primeira loja e:
+
+```http
+POST /seller/onboarding
+Content-Type: application/json
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Body:
+
+```json
+{
+  "store": {
+    "name": "Cafeteria Centro",
+    "description": "Cafeteria com produtos artesanais",
+    "cnpj": "12345678000190",
+    "phone": "62999999999"
+  },
+  "address": {
+    "street": "Rua 44",
+    "number": "100",
+    "complement": "Loja 12",
+    "district": "Centro",
+    "city": "Goiania",
+    "state": "GO",
+    "zipCode": "74000000"
+  }
+}
+```
+
+Ao concluir, a API:
+
+1. Cria a loja com status inicial `pending`.
+2. Cria o endereco vinculado a loja.
+3. Promove o usuario para role `seller`.
+4. Retorna um novo `accessToken` ja com a role atualizada.
+
+Rotas auxiliares para o painel do lojista:
+
+```http
+GET /seller/store
+PATCH /seller/store
+GET /seller/products
+POST /seller/products
+PATCH /seller/products/:productId
+PATCH /seller/products/:productId/status
+POST /seller/products/:productId/image
+```
+
+Essas rotas exigem usuario autenticado com role `seller` ou `admin`.
+
+No endpoint `POST /seller/products`, a API identifica automaticamente a loja do
+usuario autenticado. Se `status` nao for informado, o produto nasce como
+`draft`. Os status aceitos para produtos sao:
+
+```text
+draft, active, paused, inactive, out_of_stock
+```
+
+Exemplo de criacao:
+
+```http
+POST /seller/products
+Content-Type: application/json
+Authorization: Bearer ACCESS_TOKEN
+```
+
+```json
+{
+  "categoryId": "category-id",
+  "name": "Cafe especial 250g",
+  "description": "Graos selecionados, torra media",
+  "priceInCents": 3990,
+  "stock": 20,
+  "status": "active"
+}
+```
+
+Para liberar a loja no catalogo publico, um admin deve aprovar o status:
+
+```http
+PATCH /admin/stores/:storeId/status
+Content-Type: application/json
+Authorization: Bearer ADMIN_ACCESS_TOKEN
+```
+
+Body:
+
+```json
+{
+  "status": "approved"
+}
+```
+
+Statuses aceitos: `pending`, `approved`, `rejected`, `inactive`.
+
+## Catalogo publico
+
+As telas do marketplace podem consumir:
+
+```http
+GET /categories
+GET /stores
+GET /products
+```
+
+`GET /stores` retorna apenas lojas com status `approved`.
+
+`GET /products` retorna apenas produtos `active` de lojas `approved` e aceita
+filtros opcionais:
+
+```http
+GET /products?categoryId=category-id
+GET /products?storeId=store-id
+```
+
+## Carrinho e checkout
+
+O carrinho persistido usa a tabela `cart_items`. Cada item pode ficar como
+`active` ou `saved_for_later`.
+
+Rotas do carrinho:
+
+```http
+GET /cart
+GET /cart?couponCode=HUB44
+POST /cart/items
+PATCH /cart/items/:cartItemId
+PATCH /cart/items/:cartItemId/save-for-later
+PATCH /cart/items/:cartItemId/move-to-cart
+DELETE /cart/items/:cartItemId
+DELETE /cart
+```
+
+Adicionar item:
+
+```http
+POST /cart/items
+Content-Type: application/json
+Authorization: Bearer ACCESS_TOKEN
+```
+
+```json
+{
+  "productId": "product-id",
+  "quantity": 2
+}
+```
+
+Atualizar quantidade:
+
+```json
+{
+  "quantity": 3
+}
+```
+
+O retorno de `/cart` inclui `items`, `savedItems` e `summary` com valores em
+centavos:
+
+```json
+{
+  "items": [],
+  "savedItems": [],
+  "summary": {
+    "itemsCount": 0,
+    "subtotalInCents": 0,
+    "shippingInCents": 0,
+    "discountInCents": 0,
+    "totalInCents": 0,
+    "couponCode": null
+  }
+}
+```
+
+Checkout usando os itens ativos do carrinho:
+
+```http
+POST /orders/from-cart
+Content-Type: application/json
+Authorization: Bearer ACCESS_TOKEN
+```
+
+```json
+{
+  "addressId": "address-id",
+  "paymentMethod": "pix",
+  "deliveryMethod": "standard",
+  "couponCode": "HUB44"
+}
+```
+
+Depois que os pedidos sao criados e os eventos Kafka sao publicados com
+sucesso, a API limpa os itens `active` do carrinho. Itens `saved_for_later`
+permanecem salvos.
+
+## Pedidos, Kafka e notificacoes
+
+Pedidos usam as tabelas `orders`, `order_items`, `order_events` e
+`notifications`. A API tambem publica eventos no Kafka em:
+
+| Topico | Uso |
+| --- | --- |
+| `hub44.orders` | Criacao e atualizacao de status de pedidos |
+| `hub44.notifications` | Notificacoes para cliente e lojista |
+
+Configure o broker com:
+
+```env
+KAFKA_BROKER=localhost:9092
+```
+
+Se a publicacao no Kafka falhar durante criacao ou atualizacao de pedido, a API
+retorna `503`, porque a emissao dos eventos faz parte obrigatoria do fluxo.
+
+### Criar pedido
+
+```http
+POST /orders
+Content-Type: application/json
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Body:
+
+```json
+{
+  "addressId": "address-id",
+  "paymentMethod": "pix",
+  "deliveryMethod": "standard",
+  "couponCode": "HUB44",
+  "items": [
+    {
+      "productId": "product-id",
+      "quantity": 2
+    }
+  ]
+}
+```
+
+A API cria um pedido por loja quando o checkout tiver itens de lojas diferentes.
+
+### Consultar pedidos
+
+```http
+GET /orders
+GET /orders/:orderId
+GET /seller/orders
+PATCH /seller/orders/:orderId/status
+GET /notifications
+```
+
+Exemplo para atualizar status pelo lojista:
+
+```json
+{
+  "status": "shipped",
+  "trackingCode": "BR-EXP-998711"
+}
+```
+
+## Perfil e enderecos
+
+A tela de perfil pode usar:
+
+```http
+GET /users/me
+PATCH /users/me
+PATCH /users/me/password
+```
+
+Campos persistidos no perfil:
+
+```json
+{
+  "name": "Mariana Costa",
+  "email": "mariana@hub44.com",
+  "phone": "62999993321",
+  "cpf": "12345678900",
+  "emailNotifications": true,
+  "newsletter": true,
+  "promotions": false
+}
+```
+
+Enderecos do usuario:
+
+```http
+GET /addresses
+POST /addresses
+PATCH /addresses/:addressId
+PATCH /addresses/:addressId/primary
+DELETE /addresses/:addressId
+```
+
+Body de endereco:
+
+```json
+{
+  "recipient": "Mariana Costa",
+  "street": "Rua das Confeccoes",
+  "number": "144",
+  "complement": "Sala 2",
+  "district": "Setor Central",
+  "city": "Goiania",
+  "state": "GO",
+  "zipCode": "74000000",
+  "isPrimary": true
+}
 ```
 
 ## Como o cadastro funciona

@@ -1,44 +1,282 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Mail, MapPin, ShieldCheck, UserRound } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  addressQueryKeys,
+  createAddress,
+  listAddresses,
+  updateAddress,
+} from '@/lib/addresses'
+import { ApiError, getAccessToken } from '@/lib/api'
+import {
+  getUserProfile,
+  updateUserPassword,
+  updateUserProfile,
+  userQueryKeys,
+} from '@/lib/users'
+
+type ProfileForm = {
+  name: string
+  email: string
+  phone: string
+  cpf: string
+  emailNotifications: boolean
+  newsletter: boolean
+  promotions: boolean
+}
+
+type AddressForm = {
+  recipient: string
+  zipCode: string
+  street: string
+  number: string
+  complement: string
+  district: string
+  city: string
+  state: string
+}
+
+const emptyProfile: ProfileForm = {
+  name: '',
+  email: '',
+  phone: '',
+  cpf: '',
+  emailNotifications: true,
+  newsletter: true,
+  promotions: false,
+}
+
+const emptyAddress: AddressForm = {
+  recipient: '',
+  zipCode: '',
+  street: '',
+  number: '',
+  complement: '',
+  district: '',
+  city: '',
+  state: '',
+}
 
 export function PerfilPage() {
+  const queryClient = useQueryClient()
+  const hasToken = Boolean(getAccessToken())
   const [isEditing, setIsEditing] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
-
-  const [fullName, setFullName] = useState('Mariana Costa')
-  const [email, setEmail] = useState('mariana.costa@hub44.com')
-  const [phone, setPhone] = useState('(62) 99999-3321')
-  const [cpf, setCpf] = useState('123.456.789-00')
-
-  const [cep, setCep] = useState('74000-000')
-  const [street, setStreet] = useState('Rua das Confecções')
-  const [number, setNumber] = useState('144')
-  const [city, setCity] = useState('Goiânia')
-  const [state, setState] = useState('GO')
-
+  const [profileForm, setProfileForm] = useState<ProfileForm>(emptyProfile)
+  const [addressForm, setAddressForm] = useState<AddressForm>(emptyAddress)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [newsletter, setNewsletter] = useState(true)
-  const [promotions, setPromotions] = useState(false)
+  const profileQuery = useQuery({
+    queryKey: userQueryKeys.profile,
+    queryFn: getUserProfile,
+    enabled: hasToken,
+  })
+  const addressesQuery = useQuery({
+    queryKey: addressQueryKeys.all,
+    queryFn: listAddresses,
+    enabled: hasToken,
+  })
+  const updateProfileMutation = useMutation({
+    mutationFn: updateUserProfile,
+  })
+  const createAddressMutation = useMutation({
+    mutationFn: createAddress,
+  })
+  const updateAddressMutation = useMutation({
+    mutationFn: updateAddress,
+  })
+  const updatePasswordMutation = useMutation({
+    mutationFn: updateUserPassword,
+  })
+
+  const user = profileQuery.data?.user
+  const primaryAddress = useMemo(() => {
+    const addresses = addressesQuery.data?.addresses ?? []
+
+    return (
+      addresses.find((address) => address.isPrimary) ?? addresses[0] ?? null
+    )
+  }, [addressesQuery.data?.addresses])
+  const isSaving =
+    updateProfileMutation.isPending ||
+    createAddressMutation.isPending ||
+    updateAddressMutation.isPending ||
+    updatePasswordMutation.isPending
+
+  useEffect(() => {
+    if (!user || isEditing) {
+      return
+    }
+
+    setProfileForm({
+      name: user.name,
+      email: user.email,
+      phone: user.phone ?? '',
+      cpf: user.cpf ?? '',
+      emailNotifications: user.emailNotifications,
+      newsletter: user.newsletter,
+      promotions: user.promotions,
+    })
+  }, [isEditing, user])
+
+  useEffect(() => {
+    if (isEditing) {
+      return
+    }
+
+    if (!primaryAddress) {
+      setAddressForm(emptyAddress)
+      return
+    }
+
+    setAddressForm({
+      recipient: primaryAddress.recipient ?? '',
+      zipCode: primaryAddress.zipCode,
+      street: primaryAddress.street,
+      number: primaryAddress.number,
+      complement: primaryAddress.complement ?? '',
+      district: primaryAddress.district,
+      city: primaryAddress.city,
+      state: primaryAddress.state,
+    })
+  }, [isEditing, primaryAddress])
 
   function handleEdit() {
     setIsEditing(true)
     setFeedback(null)
   }
 
-  function handleSave() {
-    setIsEditing(false)
-    setFeedback('Alterações salvas localmente com sucesso.')
+  async function handleSave() {
+    setFeedback(null)
+
+    if (newPassword || currentPassword || confirmPassword) {
+      if (newPassword !== confirmPassword) {
+        setFeedback('A nova senha e a confirmacao nao conferem.')
+        return
+      }
+
+      if (newPassword.length < 8) {
+        setFeedback('A nova senha deve ter no minimo 8 caracteres.')
+        return
+      }
+    }
+
+    try {
+      await updateProfileMutation.mutateAsync({
+        name: profileForm.name.trim(),
+        email: profileForm.email.trim(),
+        phone: profileForm.phone.trim() || null,
+        cpf: profileForm.cpf.trim() || null,
+        emailNotifications: profileForm.emailNotifications,
+        newsletter: profileForm.newsletter,
+        promotions: profileForm.promotions,
+      })
+
+      await saveAddressIfNeeded()
+
+      if (newPassword || currentPassword || confirmPassword) {
+        await updatePasswordMutation.mutateAsync({
+          currentPassword,
+          newPassword,
+        })
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: userQueryKeys.profile }),
+        queryClient.invalidateQueries({ queryKey: addressQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ['auth'] }),
+      ])
+
+      setIsEditing(false)
+      setFeedback('Alteracoes salvas com sucesso.')
+    } catch (error) {
+      setFeedback(
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Nao foi possivel salvar o perfil.',
+      )
+    }
+  }
+
+  async function saveAddressIfNeeded() {
+    const addressPayload = {
+      recipient: addressForm.recipient.trim() || profileForm.name.trim(),
+      zipCode: addressForm.zipCode.replace(/\D/g, ''),
+      street: addressForm.street.trim(),
+      number: addressForm.number.trim(),
+      complement: addressForm.complement.trim() || null,
+      district: addressForm.district.trim(),
+      city: addressForm.city.trim(),
+      state: addressForm.state.trim().toUpperCase(),
+      isPrimary: true,
+    }
+    const hasAnyAddressField = Object.values(addressForm).some((value) =>
+      value.trim(),
+    )
+
+    if (!hasAnyAddressField && !primaryAddress) {
+      return
+    }
+
+    if (
+      !addressPayload.zipCode ||
+      !addressPayload.street ||
+      !addressPayload.number ||
+      !addressPayload.district ||
+      !addressPayload.city ||
+      addressPayload.state.length !== 2
+    ) {
+      throw new Error('Preencha todos os campos obrigatorios do endereco.')
+    }
+
+    if (primaryAddress) {
+      await updateAddressMutation.mutateAsync({
+        id: primaryAddress.id,
+        ...addressPayload,
+      })
+      return
+    }
+
+    await createAddressMutation.mutateAsync(addressPayload)
+  }
+
+  if (!hasToken) {
+    return (
+      <main className="grid min-h-[calc(100vh-92px)] place-items-center px-6 py-10">
+        <Card className="w-full max-w-lg rounded-2xl py-0">
+          <CardContent className="px-6 py-8 text-center">
+            <UserRound className="mx-auto mb-3 size-7 text-foreground-subtle" />
+            <p className="font-medium text-foreground">
+              Entre para acessar seu perfil.
+            </p>
+            <Button className="mt-4" render={<Link to="/login" />}>
+              Fazer login
+            </Button>
+          </CardContent>
+        </Card>
+      </main>
+    )
   }
 
   return (
@@ -53,95 +291,240 @@ export function PerfilPage() {
               <UserRound className="size-7" />
             </div>
             <div>
-              <h1 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">{fullName}</h1>
-              <p className="text-sm text-foreground-subtle sm:text-base">{email}</p>
-              <p className="mt-1 text-sm text-foreground-subtle">Gerencie seus dados e preferências da conta.</p>
+              <h1 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">
+                {profileQuery.isLoading
+                  ? 'Carregando perfil...'
+                  : profileForm.name || 'Meu perfil'}
+              </h1>
+              <p className="text-sm text-foreground-subtle sm:text-base">
+                {profileForm.email}
+              </p>
+              <p className="mt-1 text-sm text-foreground-subtle">
+                Gerencie seus dados e preferencias da conta.
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" onClick={handleEdit} disabled={isEditing}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleEdit}
+              disabled={isEditing || profileQuery.isLoading}
+            >
               Editar
             </Button>
-            <Button type="button" onClick={handleSave} disabled={!isEditing}>
-              Salvar alterações
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={!isEditing || isSaving}
+            >
+              {isSaving ? 'Salvando...' : 'Salvar alteracoes'}
             </Button>
           </div>
         </header>
 
+        {profileQuery.error || addressesQuery.error ? (
+          <div className="rounded-xl bg-error/10 px-3 py-2 text-sm text-error">
+            Nao foi possivel carregar todos os dados do perfil.
+          </div>
+        ) : null}
+
         {feedback ? (
-          <div className="rounded-xl bg-secondary/12 px-3 py-2 text-sm text-secondary-foreground">{feedback}</div>
+          <div className="rounded-xl bg-secondary/12 px-3 py-2 text-sm text-secondary-foreground">
+            {feedback}
+          </div>
         ) : null}
 
         <div className="grid gap-4 xl:grid-cols-2">
           <Card className="rounded-2xl py-0">
             <CardHeader className="px-5 pt-5 pb-3">
               <CardTitle>Dados pessoais</CardTitle>
-              <CardDescription>Informações básicas do seu perfil</CardDescription>
+              <CardDescription>
+                Informacoes basicas do seu perfil
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 px-5 pb-5">
-              <Field label="Nome completo" value={fullName} onChange={setFullName} disabled={!isEditing} />
-              <Field label="Email" value={email} onChange={setEmail} disabled={!isEditing} />
-              <Field label="Telefone" value={phone} onChange={setPhone} disabled={!isEditing} />
-              <Field label="CPF" value={cpf} onChange={setCpf} disabled={!isEditing} />
+              <Field
+                label="Nome completo"
+                value={profileForm.name}
+                onChange={(name) =>
+                  setProfileForm((current) => ({ ...current, name }))
+                }
+                disabled={!isEditing}
+              />
+              <Field
+                label="Email"
+                value={profileForm.email}
+                onChange={(email) =>
+                  setProfileForm((current) => ({ ...current, email }))
+                }
+                disabled={!isEditing}
+              />
+              <Field
+                label="Telefone"
+                value={profileForm.phone}
+                onChange={(phone) =>
+                  setProfileForm((current) => ({ ...current, phone }))
+                }
+                disabled={!isEditing}
+              />
+              <Field
+                label="CPF"
+                value={profileForm.cpf}
+                onChange={(cpf) =>
+                  setProfileForm((current) => ({ ...current, cpf }))
+                }
+                disabled={!isEditing}
+              />
             </CardContent>
           </Card>
 
           <Card className="rounded-2xl py-0">
             <CardHeader className="px-5 pt-5 pb-3">
-              <CardTitle>Endereço</CardTitle>
-              <CardDescription>Local de entrega padrão</CardDescription>
+              <CardTitle>Endereco</CardTitle>
+              <CardDescription>Local de entrega principal</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 px-5 pb-5">
-              <Field label="CEP" value={cep} onChange={setCep} disabled={!isEditing} />
-              <Field label="Rua" value={street} onChange={setStreet} disabled={!isEditing} />
+              <Field
+                label="Destinatario"
+                value={addressForm.recipient}
+                onChange={(recipient) =>
+                  setAddressForm((current) => ({ ...current, recipient }))
+                }
+                disabled={!isEditing}
+              />
+              <Field
+                label="CEP"
+                value={addressForm.zipCode}
+                onChange={(zipCode) =>
+                  setAddressForm((current) => ({ ...current, zipCode }))
+                }
+                disabled={!isEditing}
+              />
+              <Field
+                label="Rua"
+                value={addressForm.street}
+                onChange={(street) =>
+                  setAddressForm((current) => ({ ...current, street }))
+                }
+                disabled={!isEditing}
+              />
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Número" value={number} onChange={setNumber} disabled={!isEditing} />
+                <Field
+                  label="Numero"
+                  value={addressForm.number}
+                  onChange={(number) =>
+                    setAddressForm((current) => ({ ...current, number }))
+                  }
+                  disabled={!isEditing}
+                />
                 <div className="sm:col-span-2">
-                  <Field label="Cidade" value={city} onChange={setCity} disabled={!isEditing} />
+                  <Field
+                    label="Bairro"
+                    value={addressForm.district}
+                    onChange={(district) =>
+                      setAddressForm((current) => ({ ...current, district }))
+                    }
+                    disabled={!isEditing}
+                  />
                 </div>
               </div>
-              <Field label="Estado" value={state} onChange={setState} disabled={!isEditing} />
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="sm:col-span-2">
+                  <Field
+                    label="Cidade"
+                    value={addressForm.city}
+                    onChange={(city) =>
+                      setAddressForm((current) => ({ ...current, city }))
+                    }
+                    disabled={!isEditing}
+                  />
+                </div>
+                <Field
+                  label="Estado"
+                  value={addressForm.state}
+                  onChange={(state) =>
+                    setAddressForm((current) => ({ ...current, state }))
+                  }
+                  disabled={!isEditing}
+                />
+              </div>
+              <Field
+                label="Complemento"
+                value={addressForm.complement}
+                onChange={(complement) =>
+                  setAddressForm((current) => ({ ...current, complement }))
+                }
+                disabled={!isEditing}
+              />
             </CardContent>
           </Card>
 
           <Card className="rounded-2xl py-0">
             <CardHeader className="px-5 pt-5 pb-3">
-              <CardTitle>Segurança</CardTitle>
+              <CardTitle>Seguranca</CardTitle>
               <CardDescription>Atualize suas credenciais</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 px-5 pb-5">
-              <Field label="Senha atual" value={currentPassword} onChange={setCurrentPassword} disabled={!isEditing} type="password" />
-              <Field label="Nova senha" value={newPassword} onChange={setNewPassword} disabled={!isEditing} type="password" />
-              <Field label="Confirmar senha" value={confirmPassword} onChange={setConfirmPassword} disabled={!isEditing} type="password" />
+              <Field
+                label="Senha atual"
+                value={currentPassword}
+                onChange={setCurrentPassword}
+                disabled={!isEditing}
+                type="password"
+              />
+              <Field
+                label="Nova senha"
+                value={newPassword}
+                onChange={setNewPassword}
+                disabled={!isEditing}
+                type="password"
+              />
+              <Field
+                label="Confirmar senha"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                disabled={!isEditing}
+                type="password"
+              />
             </CardContent>
           </Card>
 
           <Card className="rounded-2xl py-0">
             <CardHeader className="px-5 pt-5 pb-3">
-              <CardTitle>Preferências</CardTitle>
-              <CardDescription>Comunicações e novidades</CardDescription>
+              <CardTitle>Preferencias</CardTitle>
+              <CardDescription>Comunicacoes e novidades</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 px-5 pb-5">
               <PreferenceRow
-                label="Notificações por email"
-                description="Atualizações de pedidos e movimentações"
-                checked={emailNotifications}
-                onCheckedChange={setEmailNotifications}
+                label="Notificacoes por email"
+                description="Atualizacoes de pedidos e movimentacoes"
+                checked={profileForm.emailNotifications}
+                onCheckedChange={(emailNotifications) =>
+                  setProfileForm((current) => ({
+                    ...current,
+                    emailNotifications,
+                  }))
+                }
                 disabled={!isEditing}
               />
               <PreferenceRow
                 label="Newsletter"
-                description="Novidades do Hub44 e tendências"
-                checked={newsletter}
-                onCheckedChange={setNewsletter}
+                description="Novidades do Hub44 e tendencias"
+                checked={profileForm.newsletter}
+                onCheckedChange={(newsletter) =>
+                  setProfileForm((current) => ({ ...current, newsletter }))
+                }
                 disabled={!isEditing}
               />
               <PreferenceRow
-                label="Promoções"
+                label="Promocoes"
                 description="Ofertas e campanhas personalizadas"
-                checked={promotions}
-                onCheckedChange={setPromotions}
+                checked={profileForm.promotions}
+                onCheckedChange={(promotions) =>
+                  setProfileForm((current) => ({ ...current, promotions }))
+                }
                 disabled={!isEditing}
               />
 
@@ -152,11 +535,11 @@ export function PerfilPage() {
                 </Badge>
                 <Badge variant="outline">
                   <MapPin className="size-3.5" />
-                  Endereço validado
+                  {primaryAddress ? 'Endereco validado' : 'Sem endereco'}
                 </Badge>
                 <Badge variant="outline">
                   <ShieldCheck className="size-3.5" />
-                  Segurança em dia
+                  Seguranca em dia
                 </Badge>
               </div>
             </CardContent>
@@ -189,7 +572,12 @@ function Field({
   return (
     <div className="grid gap-1.5">
       <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} />
+      <Input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+      />
     </div>
   )
 }
@@ -208,12 +596,20 @@ function PreferenceRow({
   disabled: boolean
 }) {
   return (
-    <label className="flex items-start justify-between gap-3 rounded-xl bg-surface-alt/70 px-3 py-2">
+    <div className="flex items-start justify-between gap-3 rounded-xl bg-surface-alt/70 px-3 py-2">
       <span>
-        <span className="block text-sm font-medium text-foreground">{label}</span>
-        <span className="block text-xs text-foreground-subtle">{description}</span>
+        <span className="block text-sm font-medium text-foreground">
+          {label}
+        </span>
+        <span className="block text-xs text-foreground-subtle">
+          {description}
+        </span>
       </span>
-      <Checkbox checked={checked} onCheckedChange={(value) => onCheckedChange(Boolean(value))} disabled={disabled} />
-    </label>
+      <Checkbox
+        checked={checked}
+        onCheckedChange={(value) => onCheckedChange(Boolean(value))}
+        disabled={disabled}
+      />
+    </div>
   )
 }

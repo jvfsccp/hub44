@@ -27,9 +27,9 @@
 
 ## Routing
 - Home: `/`
-- Preview de componentes: `/components-preview`
+- Marketplace: `/marketplace`
 
 ## Expected Workflow
 1. Criar/ajustar componente em `src/components`.
-2. Expor/validar visual em `/components-preview` quando fizer sentido.
+2. Validar no fluxo real em `src/routes` sempre que possivel.
 3. Rodar `pnpm build` antes de finalizar alteracoes.

@@ -5,6 +5,7 @@ import {
   InvalidSlugError as InvalidProductSlugError,
   ProductAlreadyExistsError,
   ProductNotFoundError,
+  type ProductStatus,
   ProductsService,
   toProductResponse,
 } from '@/services/products-service'
@@ -37,6 +38,7 @@ type CreateProductRequest = FastifyRequest<{
     description?: string | null
     priceInCents: number
     stock?: number
+    status?: ProductStatus
   }
 }>
 
@@ -122,7 +124,7 @@ function handleStoreError(error: unknown, reply: FastifyReply) {
   return handleSharedError(error, reply)
 }
 
-function handleProductError(error: unknown, reply: FastifyReply) {
+export function handleProductError(error: unknown, reply: FastifyReply) {
   if (error instanceof CategoryNotFoundError) {
     return reply.status(404).send({ message: error.message })
   }
