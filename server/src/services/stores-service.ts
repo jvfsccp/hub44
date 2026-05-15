@@ -1,4 +1,4 @@
-import type { Store } from '@/repositories/stores-repository'
+import type { Store, StoreStatus } from '@/repositories/stores-repository'
 import { StoresRepository } from '@/repositories/stores-repository'
 import { createSlug } from '@/utils/slug'
 
@@ -37,6 +37,10 @@ export class InvalidSlugError extends Error {
 
 export class StoresService {
   constructor(private readonly storesRepository = new StoresRepository()) {}
+
+  async getByOwnerId(ownerId: string) {
+    return this.storesRepository.findByOwnerId(ownerId)
+  }
 
   async create(input: CreateStoreInput) {
     const slug = createSlug(input.slug ?? input.name)
@@ -78,6 +82,65 @@ export class StoresService {
 
     if (store.ownerId !== ownerId) {
       throw new StoreAccessDeniedError()
+    }
+
+    return store
+  }
+
+  async updateOwnedStore(
+    storeId: string,
+    ownerId: string,
+    input: Partial<{
+      name: string
+      slug: string
+      description: string
+      cnpj: string
+      phone: string
+    }>,
+  ) {
+    await this.getOwnedStore(storeId, ownerId)
+
+    const slug = input.slug ? createSlug(input.slug) : undefined
+
+    if (input.slug && !slug) {
+      throw new InvalidSlugError()
+    }
+
+    if (slug) {
+      const existingStoreBySlug = await this.storesRepository.findBySlug(slug)
+
+      if (existingStoreBySlug && existingStoreBySlug.id !== storeId) {
+        throw new StoreAlreadyExistsError('Store slug already exists')
+      }
+    }
+
+    if (input.cnpj) {
+      const existingStoreByCnpj = await this.storesRepository.findByCnpj(
+        input.cnpj,
+      )
+
+      if (existingStoreByCnpj && existingStoreByCnpj.id !== storeId) {
+        throw new StoreAlreadyExistsError('Store CNPJ already exists')
+      }
+    }
+
+    const store = await this.storesRepository.update(storeId, {
+      ...input,
+      ...(slug ? { slug } : {}),
+    })
+
+    if (!store) {
+      throw new StoreNotFoundError()
+    }
+
+    return store
+  }
+
+  async updateStatus(storeId: string, status: StoreStatus) {
+    const store = await this.storesRepository.updateStatus(storeId, status)
+
+    if (!store) {
+      throw new StoreNotFoundError()
     }
 
     return store

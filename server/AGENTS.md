@@ -77,3 +77,9 @@ pnpm.cmd exec biome check <arquivos>
 ```
 
 5. Nao reformatar arquivos fora do escopo sem necessidade.
+
+## Commits
+
+- Use Conventional Commits em mensagens curtas e diretas.
+- Exemplos: `feat: add seller onboarding`, `fix: adjust kafka listeners`,
+  `docs: update storage api guide`.

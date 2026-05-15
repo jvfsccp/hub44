@@ -1,11 +1,13 @@
-import { Kafka } from 'kafkajs'
+import { Kafka, Partitioners } from 'kafkajs'
 
-const kafkaBroker = process.env.KAFKA_BROKER ?? 'localhost:9092'
+import { env } from '@/env'
 
 export const kafka = new Kafka({
   clientId: 'hub44-server',
-  brokers: [kafkaBroker],
+  brokers: [env.KAFKA_BROKER],
 })
 
-export const producer = kafka.producer()
+export const producer = kafka.producer({
+  createPartitioner: Partitioners.LegacyPartitioner,
+})
 export const consumer = kafka.consumer({ groupId: 'hub44-group' })

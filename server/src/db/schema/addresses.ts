@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 import { uuidv7 } from 'uuidv7'
 
 import stores from './stores'
@@ -16,6 +16,7 @@ const addresses = pgTable(
     storeId: text('store_id').references(() => stores.id, {
       onDelete: 'cascade',
     }),
+    recipient: text('recipient'),
     street: text('street').notNull(),
     number: text('number').notNull(),
     complement: text('complement'),
@@ -23,6 +24,7 @@ const addresses = pgTable(
     city: text('city').notNull(),
     state: text('state').notNull(),
     zipCode: text('zip_code').notNull(),
+    isPrimary: boolean('is_primary').notNull().default(false),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
