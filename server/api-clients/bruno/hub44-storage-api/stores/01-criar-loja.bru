@@ -1,23 +1,28 @@
 meta {
-  name: 01 - Criar loja
+  name: 03 - Criar loja
   type: http
-  seq: 1
+  seq: 4
 }
 
 post {
   url: {{baseUrl}}/stores
-  body: multipartForm
+  body: json
   auth: none
 }
 
-body:multipart-form {
-  name: Cafeteria Centro
-  description: Cafeteria com produtos artesanais
-  logo: @file(./logo.png)
-  banner: @file(./banner.jpg)
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Cafeteria Centro",
+    "description": "Cafeteria com produtos artesanais",
+    "cnpj": "12345678000190",
+    "phone": "62999999999"
+  }
 }
 
 docs {
-  Antes de enviar, selecione arquivos reais nos campos logo e banner.
-  Depois do envio, copie o valor de store.id da resposta.
+  Copie store.id da resposta e cole na variavel storeId.
 }
