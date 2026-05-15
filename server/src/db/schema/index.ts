@@ -1,4 +1,5 @@
 export { default as addresses } from './addresses'
+export { cartItemStatuses, default as cartItems } from './cart-items'
 export { default as categories } from './categories'
 export { default as notifications, notificationTypes } from './notifications'
 export { default as orderEvents } from './order-events'
