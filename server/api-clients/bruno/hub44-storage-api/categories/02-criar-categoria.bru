@@ -1,0 +1,26 @@
+meta {
+  name: 02 - Criar categoria
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/categories
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Cafes",
+    "description": "Produtos de cafeteria e graos especiais"
+  }
+}
+
+docs {
+  Copie category.id da resposta e cole na variavel categoryId.
+}
