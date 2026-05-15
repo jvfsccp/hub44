@@ -190,6 +190,86 @@ GET /products?categoryId=category-id
 GET /products?storeId=store-id
 ```
 
+## Carrinho e checkout
+
+O carrinho persistido usa a tabela `cart_items`. Cada item pode ficar como
+`active` ou `saved_for_later`.
+
+Rotas do carrinho:
+
+```http
+GET /cart
+GET /cart?couponCode=HUB44
+POST /cart/items
+PATCH /cart/items/:cartItemId
+PATCH /cart/items/:cartItemId/save-for-later
+PATCH /cart/items/:cartItemId/move-to-cart
+DELETE /cart/items/:cartItemId
+DELETE /cart
+```
+
+Adicionar item:
+
+```http
+POST /cart/items
+Content-Type: application/json
+Authorization: Bearer ACCESS_TOKEN
+```
+
+```json
+{
+  "productId": "product-id",
+  "quantity": 2
+}
+```
+
+Atualizar quantidade:
+
+```json
+{
+  "quantity": 3
+}
+```
+
+O retorno de `/cart` inclui `items`, `savedItems` e `summary` com valores em
+centavos:
+
+```json
+{
+  "items": [],
+  "savedItems": [],
+  "summary": {
+    "itemsCount": 0,
+    "subtotalInCents": 0,
+    "shippingInCents": 0,
+    "discountInCents": 0,
+    "totalInCents": 0,
+    "couponCode": null
+  }
+}
+```
+
+Checkout usando os itens ativos do carrinho:
+
+```http
+POST /orders/from-cart
+Content-Type: application/json
+Authorization: Bearer ACCESS_TOKEN
+```
+
+```json
+{
+  "addressId": "address-id",
+  "paymentMethod": "pix",
+  "deliveryMethod": "standard",
+  "couponCode": "HUB44"
+}
+```
+
+Depois que os pedidos sao criados e os eventos Kafka sao publicados com
+sucesso, a API limpa os itens `active` do carrinho. Itens `saved_for_later`
+permanecem salvos.
+
 ## Pedidos, Kafka e notificacoes
 
 Pedidos usam as tabelas `orders`, `order_items`, `order_events` e
@@ -252,6 +332,56 @@ Exemplo para atualizar status pelo lojista:
 {
   "status": "shipped",
   "trackingCode": "BR-EXP-998711"
+}
+```
+
+## Perfil e enderecos
+
+A tela de perfil pode usar:
+
+```http
+GET /users/me
+PATCH /users/me
+PATCH /users/me/password
+```
+
+Campos persistidos no perfil:
+
+```json
+{
+  "name": "Mariana Costa",
+  "email": "mariana@hub44.com",
+  "phone": "62999993321",
+  "cpf": "12345678900",
+  "emailNotifications": true,
+  "newsletter": true,
+  "promotions": false
+}
+```
+
+Enderecos do usuario:
+
+```http
+GET /addresses
+POST /addresses
+PATCH /addresses/:addressId
+PATCH /addresses/:addressId/primary
+DELETE /addresses/:addressId
+```
+
+Body de endereco:
+
+```json
+{
+  "recipient": "Mariana Costa",
+  "street": "Rua das Confeccoes",
+  "number": "144",
+  "complement": "Sala 2",
+  "district": "Setor Central",
+  "city": "Goiania",
+  "state": "GO",
+  "zipCode": "74000000",
+  "isPrimary": true
 }
 ```
 
