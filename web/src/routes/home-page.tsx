@@ -59,8 +59,12 @@ const sellerHighlights = [
   },
 ]
 
-const navItems = [
-  { label: 'Marketplace', href: '#compradores' },
+const navItems: Array<{
+  label: string
+  href?: string
+  to?: '/marketplace'
+}> = [
+  { label: 'Marketplace', to: '/marketplace' },
   { label: 'Para lojistas', href: '#lojistas' },
   { label: 'Acesso', href: '#acesso' },
   { label: 'Contato', href: '#rodape' },
@@ -76,12 +80,26 @@ export function HomePage() {
           </a>
 
           <nav className="hidden items-center gap-7 text-sm font-semibold text-foreground-subtle lg:flex">
-            {navItems.map((item) => (
-              <a key={item.label} href={item.href} className="transition-colors hover:text-primary">
+            {navItems.map((item) =>
+              item.to ? (
+                <Link
+                  key={item.label}
+                  to={item.to}
+                  className="transition-colors hover:text-primary"
+              >
                 {item.label}
-              </a>
-            ))}
-          </nav>
+              </Link>
+            ) : (
+            <a
+              key={item.label}
+              href={item.href}
+              className="transition-colors hover:text-primary"
+            >
+              {item.label}
+            </a>
+          )
+        )}
+        </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
@@ -134,8 +152,8 @@ export function HomePage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <a
-                href="#compradores"
+              <Link
+                to="/marketplace"
                 className={buttonVariants({
                   variant: 'default',
                   size: 'lg',
@@ -144,7 +162,7 @@ export function HomePage() {
               >
                 Explorar marketplace
                 <ArrowRight className="size-4" />
-              </a>
+              </Link>
               <a
                 href="#lojistas"
                 className={buttonVariants({
