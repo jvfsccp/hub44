@@ -29,6 +29,20 @@
       "when": 1778851861540,
       "tag": "0003_green_marrow",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778868743470,
+      "tag": "0004_goofy_shiva",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778869160277,
+      "tag": "0005_lovely_ben_grimm",
+      "breakpoints": true
     }
   ]
 }
