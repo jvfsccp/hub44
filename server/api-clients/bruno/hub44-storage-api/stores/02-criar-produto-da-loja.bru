@@ -1,23 +1,29 @@
 meta {
-  name: 02 - Criar produto da loja
+  name: 05 - Criar produto
   type: http
-  seq: 2
+  seq: 6
 }
 
 post {
   url: {{baseUrl}}/stores/{{storeId}}/products
-  body: multipartForm
+  body: json
   auth: none
 }
 
-body:multipart-form {
-  name: Cafe especial 250g
-  description: Graos selecionados, torra media
-  price: 39.90
-  image: @file(./produto.jpg)
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+body:json {
+  {
+    "categoryId": "{{categoryId}}",
+    "name": "Cafe especial 250g",
+    "description": "Graos selecionados, torra media",
+    "priceInCents": 3990,
+    "stock": 20
+  }
 }
 
 docs {
-  Antes de enviar, cole o store.id da loja na variavel storeId do ambiente local.
-  Depois selecione uma imagem real no campo image.
+  Copie product.id da resposta e cole na variavel productId.
 }

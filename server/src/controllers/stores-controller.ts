@@ -1,27 +1,47 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
-import { z } from 'zod'
 
 import {
+  CategoryNotFoundError,
+  InvalidSlugError as InvalidProductSlugError,
+  ProductAlreadyExistsError,
+  ProductNotFoundError,
   ProductsService,
-  StoreNotFoundError,
   toProductResponse,
 } from '@/services/products-service'
-import { StoresService, toStoreResponse } from '@/services/stores-service'
+import {
+  InvalidSlugError as InvalidStoreSlugError,
+  StoreAccessDeniedError,
+  StoreAlreadyExistsError,
+  StoreNotFoundError,
+  StoresService,
+  toStoreResponse,
+} from '@/services/stores-service'
 import { MultipartFormError, readMultipartForm } from '@/utils/multipart-form'
 
-const createStoreFieldsSchema = z.object({
-  name: z.string().trim().min(1),
-  description: z.string().trim().min(1),
-})
-
-const createProductFieldsSchema = z.object({
-  name: z.string().trim().min(1),
-  description: z.string().trim().min(1),
-  price: z.string().trim().min(1),
-})
+type CreateStoreRequest = FastifyRequest<{
+  Body: {
+    name: string
+    slug?: string
+    description: string
+    cnpj: string
+    phone: string
+  }
+}>
 
 type CreateProductRequest = FastifyRequest<{
   Params: { storeId: string }
+  Body: {
+    categoryId: string
+    name: string
+    slug?: string
+    description?: string | null
+    priceInCents: number
+    stock?: number
+  }
+}>
+
+type UploadProductImageRequest = FastifyRequest<{
+  Params: { storeId: string; productId: string }
 }>
 
 export class StoresController {
@@ -30,30 +50,16 @@ export class StoresController {
     private readonly productsService = new ProductsService(),
   ) {}
 
-  create = async (request: FastifyRequest, reply: FastifyReply) => {
+  create = async (request: CreateStoreRequest, reply: FastifyReply) => {
     try {
-      const form = await readMultipartForm(request, {
-        fileFields: ['logo', 'banner'],
-      })
-      const fields = createStoreFieldsSchema.safeParse(form.fields)
-      const logo = form.files.logo
-      const banner = form.files.banner
-
-      if (!fields.success || !logo || !banner) {
-        return reply.status(400).send({
-          message: 'Fields name, description, logo and banner are required',
-        })
-      }
-
       const store = await this.storesService.create({
-        ...fields.data,
-        logo,
-        banner,
+        ownerId: request.user.sub,
+        ...request.body,
       })
 
       return reply.status(201).send({ store: toStoreResponse(store) })
     } catch (error) {
-      return handleCreateError(error, reply)
+      return handleStoreError(error, reply)
     }
   }
 
@@ -62,60 +68,89 @@ export class StoresController {
     reply: FastifyReply,
   ) => {
     try {
-      const form = await readMultipartForm(request, { fileFields: ['image'] })
-      const fields = createProductFieldsSchema.safeParse(form.fields)
-      const image = form.files.image
-
-      if (!fields.success || !image) {
-        return reply.status(400).send({
-          message: 'Fields name, description, price and image are required',
-        })
-      }
-
-      const priceInCents = parsePriceInCents(fields.data.price)
-
-      if (!priceInCents) {
-        return reply.status(400).send({
-          message:
-            'Field price must be a positive number with up to 2 decimals',
-        })
-      }
-
       const product = await this.productsService.create({
+        ownerId: request.user.sub,
         storeId: request.params.storeId,
-        name: fields.data.name,
-        description: fields.data.description,
-        priceInCents,
-        image,
+        ...request.body,
       })
 
       return reply.status(201).send({
         product: toProductResponse(product),
       })
     } catch (error) {
-      if (error instanceof StoreNotFoundError) {
-        return reply.status(404).send({ message: error.message })
+      return handleProductError(error, reply)
+    }
+  }
+
+  uploadProductImage = async (
+    request: UploadProductImageRequest,
+    reply: FastifyReply,
+  ) => {
+    try {
+      const form = await readMultipartForm(request, { fileFields: ['image'] })
+      const image = form.files.image
+
+      if (!image) {
+        return reply.status(400).send({ message: 'Field image is required' })
       }
 
-      return handleCreateError(error, reply)
+      const product = await this.productsService.uploadImage({
+        ownerId: request.user.sub,
+        storeId: request.params.storeId,
+        productId: request.params.productId,
+        image,
+      })
+
+      return reply.status(200).send({
+        product: toProductResponse(product),
+      })
+    } catch (error) {
+      return handleProductError(error, reply)
     }
   }
 }
 
-function parsePriceInCents(price: string) {
-  const normalizedPrice = price.trim().replace(',', '.')
-
-  if (!/^\d+(\.\d{1,2})?$/.test(normalizedPrice)) {
-    return null
+function handleStoreError(error: unknown, reply: FastifyReply) {
+  if (error instanceof StoreAlreadyExistsError) {
+    return reply.status(409).send({ message: error.message })
   }
 
-  const [units, cents = ''] = normalizedPrice.split('.')
-  const priceInCents = Number(units) * 100 + Number(cents.padEnd(2, '0'))
+  if (error instanceof InvalidStoreSlugError) {
+    return reply.status(400).send({ message: error.message })
+  }
 
-  return priceInCents > 0 ? priceInCents : null
+  return handleSharedError(error, reply)
 }
 
-function handleCreateError(error: unknown, reply: FastifyReply) {
+function handleProductError(error: unknown, reply: FastifyReply) {
+  if (error instanceof CategoryNotFoundError) {
+    return reply.status(404).send({ message: error.message })
+  }
+
+  if (error instanceof ProductNotFoundError) {
+    return reply.status(404).send({ message: error.message })
+  }
+
+  if (error instanceof ProductAlreadyExistsError) {
+    return reply.status(409).send({ message: error.message })
+  }
+
+  if (error instanceof InvalidProductSlugError) {
+    return reply.status(400).send({ message: error.message })
+  }
+
+  return handleSharedError(error, reply)
+}
+
+export function handleSharedError(error: unknown, reply: FastifyReply) {
+  if (error instanceof StoreNotFoundError) {
+    return reply.status(404).send({ message: error.message })
+  }
+
+  if (error instanceof StoreAccessDeniedError) {
+    return reply.status(403).send({ message: error.message })
+  }
+
   if (error instanceof MultipartFormError) {
     return reply.status(400).send({ message: error.message })
   }

@@ -1,0 +1,22 @@
+meta {
+  name: 01 - Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "equipe@hub44.test",
+    "password": "12345678"
+  }
+}
+
+docs {
+  Copie o accessToken da resposta e cole na variavel accessToken do ambiente local.
+}

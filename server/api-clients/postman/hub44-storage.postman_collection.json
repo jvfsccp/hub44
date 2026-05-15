@@ -2,15 +2,145 @@
   "info": {
     "_postman_id": "d0f7b3b0-52a5-4b9c-a870-4f6a2a7f79b1",
     "name": "Hub44 Storage API",
-    "description": "Requests para cadastrar lojas e produtos com imagens via multipart/form-data.",
+    "description": "Fluxo para cadastrar categorias, lojas, enderecos e produtos. Dados usam JSON; upload de imagem usa multipart/form-data.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Stores",
+      "name": "Auth",
       "item": [
         {
-          "name": "01 - Criar loja",
+          "name": "00 - Registrar usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Membro Equipe\",\n  \"email\": \"equipe@hub44.test\",\n  \"phone\": \"62999999999\",\n  \"password\": \"12345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Use apenas se ainda nao existir usuario para testar."
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', response.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"equipe@hub44.test\",\n  \"password\": \"12345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Salva accessToken automaticamente nas variaveis da collection."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "item": [
+        {
+          "name": "02 - Criar categoria",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.category && response.category.id) {",
+                  "  pm.collectionVariables.set('categoryId', response.category.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cafes\",\n  \"description\": \"Produtos de cafeteria e graos especiais\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Criar loja",
           "event": [
             {
               "listen": "test",
@@ -32,43 +162,66 @@
           ],
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "name",
-                  "value": "Cafeteria Centro",
-                  "type": "text"
-                },
-                {
-                  "key": "description",
-                  "value": "Cafeteria com produtos artesanais",
-                  "type": "text"
-                },
-                {
-                  "key": "logo",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "banner",
-                  "type": "file",
-                  "src": []
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cafeteria Centro\",\n  \"description\": \"Cafeteria com produtos artesanais\",\n  \"cnpj\": \"12345678000190\",\n  \"phone\": \"62999999999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/stores",
               "host": ["{{baseUrl}}"],
               "path": ["stores"]
-            },
-            "description": "Selecione arquivos reais nos campos logo e banner antes de enviar. O teste salva automaticamente storeId nas variaveis da collection."
+            }
           },
           "response": []
         },
         {
-          "name": "02 - Criar produto da loja",
+          "name": "04 - Criar endereco da loja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"street\": \"Rua 44\",\n  \"number\": \"100\",\n  \"complement\": \"Loja 12\",\n  \"district\": \"Centro\",\n  \"city\": \"Goiania\",\n  \"state\": \"GO\",\n  \"zipCode\": \"74000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stores/{{storeId}}/addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["stores", "{{storeId}}", "addresses"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Criar produto",
           "event": [
             {
               "listen": "test",
@@ -90,25 +243,46 @@
           ],
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{categoryId}}\",\n  \"name\": \"Cafe especial 250g\",\n  \"description\": \"Graos selecionados, torra media\",\n  \"priceInCents\": 3990,\n  \"stock\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stores/{{storeId}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["stores", "{{storeId}}", "products"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Upload imagem do produto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "body": {
               "mode": "formdata",
               "formdata": [
-                {
-                  "key": "name",
-                  "value": "Cafe especial 250g",
-                  "type": "text"
-                },
-                {
-                  "key": "description",
-                  "value": "Graos selecionados, torra media",
-                  "type": "text"
-                },
-                {
-                  "key": "price",
-                  "value": "39.90",
-                  "type": "text"
-                },
                 {
                   "key": "image",
                   "type": "file",
@@ -117,11 +291,17 @@
               ]
             },
             "url": {
-              "raw": "{{baseUrl}}/stores/{{storeId}}/products",
+              "raw": "{{baseUrl}}/stores/{{storeId}}/products/{{productId}}/image",
               "host": ["{{baseUrl}}"],
-              "path": ["stores", "{{storeId}}", "products"]
+              "path": [
+                "stores",
+                "{{storeId}}",
+                "products",
+                "{{productId}}",
+                "image"
+              ]
             },
-            "description": "Execute primeiro o request 01 - Criar loja. Ele salva storeId automaticamente. Depois selecione uma imagem real no campo image."
+            "description": "Selecione uma imagem real no campo image antes de enviar."
           },
           "response": []
         }
@@ -135,8 +315,18 @@
       "type": "string"
     },
     {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "storeId",
-      "value": "cole-o-store-id-aqui",
+      "value": "",
       "type": "string"
     },
     {
