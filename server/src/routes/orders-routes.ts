@@ -96,6 +96,36 @@ export const ordersRoutes: FastifyPluginAsyncZod = async (app) => {
     controller.create,
   )
 
+  app.post(
+    '/orders/from-cart',
+    {
+      preHandler: [authenticate, authorizeRoles('customer', 'admin')],
+      schema: {
+        summary: 'Create orders from the authenticated customer cart',
+        description:
+          'Uses active cart items, creates one order per store, publishes Kafka events and clears the active cart after success.',
+        tags: ['Orders'],
+        body: z.object({
+          addressId: z.string().nullable().optional(),
+          paymentMethod: paymentMethodSchema,
+          deliveryMethod: z.string().trim().min(1).optional(),
+          couponCode: z.string().trim().nullable().optional(),
+        }),
+        response: {
+          201: z.object({ orders: z.array(orderSchema) }),
+          400: messageSchema,
+          401: messageSchema,
+          403: messageSchema,
+          404: messageSchema,
+          409: messageSchema,
+          503: messageSchema,
+          500: messageSchema,
+        },
+      },
+    },
+    controller.createFromCart,
+  )
+
   app.get(
     '/orders',
     {
