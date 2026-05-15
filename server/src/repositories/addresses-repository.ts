@@ -1,9 +1,19 @@
+import { eq } from 'drizzle-orm'
+
 import { db } from '@/db'
 import addresses from '@/db/schema/addresses'
 
 export type Address = typeof addresses.$inferSelect
 
 export class AddressesRepository {
+  async findByStoreId(storeId: string) {
+    return db.select().from(addresses).where(eq(addresses.storeId, storeId))
+  }
+
+  async findByUserId(userId: string) {
+    return db.select().from(addresses).where(eq(addresses.userId, userId))
+  }
+
   async create(input: {
     userId?: string | null
     storeId?: string | null
