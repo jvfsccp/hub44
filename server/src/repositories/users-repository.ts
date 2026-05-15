@@ -46,4 +46,17 @@ export class UsersRepository {
 
     return user
   }
+
+  async updateRole(id: string, role: UserRole) {
+    const [user] = await db
+      .update(users)
+      .set({
+        role,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning()
+
+    return user ?? null
+  }
 }
