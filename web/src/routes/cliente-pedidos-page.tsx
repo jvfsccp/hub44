@@ -1,328 +1,372 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, CircleDollarSign, CreditCard, Headset, PackageCheck, Truck } from 'lucide-react'
+import {
+  ChevronRight,
+  CircleDollarSign,
+  CreditCard,
+  PackageCheck,
+  ReceiptText,
+  Search,
+  ShoppingCart,
+  Truck,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Badge } from '@/components/ui/badge'
+
+import productBlazerImage from '@/assets/stitch/product-blazer.png'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import {
+  listOrders,
+  type Order,
+  type OrderStatus,
+  orderQueryKeys,
+  type PaymentMethod,
+  type PaymentStatus,
+} from '@/lib/orders'
 
-const summaryCards = [
-  { label: 'Em andamento', value: '3', icon: Truck },
-  { label: 'Entregues', value: '14', icon: PackageCheck },
-  { label: 'Aguardando pagamento', value: '1', icon: CreditCard },
-  { label: 'Total gasto', value: 'R$ 9.420,00', icon: CircleDollarSign },
-]
+const currency = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
 
-const orders = [
-  {
-    id: '#CLI-20318',
-    store: 'Loja Aurora Fashion',
-    date: 'Hoje, 10:34',
-    total: 'R$ 1.280,00',
-    orderStatus: 'Em separacao',
-    paymentStatus: 'Pago',
-    deliveryMethod: 'Transportadora expressa',
-    tracking: 'Pedido em preparacao para coleta',
-    supportInfo: 'Atendimento em horario comercial',
-    items: ['Blazer Alfaiataria (2)', 'Calca Reta Premium (4)'],
-  },
-  {
-    id: '#CLI-20297',
-    store: 'Central Mix Atacado',
-    date: 'Ontem, 16:08',
-    total: 'R$ 740,00',
-    orderStatus: 'Enviado',
-    paymentStatus: 'Pago',
-    deliveryMethod: 'Entrega padrao',
-    tracking: 'Saiu para transferencia de rota',
-    supportInfo: 'Prazo medio de resposta: 1h',
-    items: ['Camisa Premium (3)', 'Saia Midi (2)'],
-  },
-  {
-    id: '#CLI-20265',
-    store: 'Moda Centro Norte',
-    date: '22/04, 12:51',
-    total: 'R$ 2.190,00',
-    orderStatus: 'Aguardando pagamento',
-    paymentStatus: 'Pendente',
-    deliveryMethod: 'Retirada na loja',
-    tracking: 'Aguardando confirmacao do pagamento',
-    supportInfo: 'Suporte financeiro disponivel',
-    items: ['Conjunto Linho (5)', 'Vestido Midi (4)'],
-  },
-]
+const dateFormatter = new Intl.DateTimeFormat('pt-BR')
 
-function orderVariant(status: string): 'default' | 'secondary' | 'outline' {
-  if (status === 'Em separacao') return 'secondary'
-  if (status === 'Aguardando pagamento') return 'outline'
-  return 'default'
+const statusLabels: Record<OrderStatus, string> = {
+  pending: 'Pedido recebido',
+  confirmed: 'Pedido confirmado',
+  preparing: 'Pedido em preparacao',
+  ready_to_ship: 'Pronto para envio',
+  shipped: 'Pedido enviado',
+  delivered: 'Pedido concluido',
+  canceled: 'Pedido cancelado',
 }
 
-function paymentVariant(status: string): 'default' | 'secondary' | 'outline' {
-  if (status === 'Pendente') return 'outline'
-  return 'default'
+const paymentLabels: Record<PaymentStatus, string> = {
+  pending: 'Pagamento pendente',
+  paid: 'Pagamento aprovado',
+  failed: 'Pagamento recusado',
+  refunded: 'Pagamento reembolsado',
+}
+
+const paymentMethodLabels: Record<PaymentMethod, string> = {
+  card: 'CARTAO DE CREDITO',
+  pix: 'PIX',
+  boleto: 'BOLETO',
+}
+
+const statusFilters = [
+  { label: 'Todos', value: 'all' },
+  { label: 'Em andamento', value: 'active' },
+  { label: 'Entregues', value: 'delivered' },
+  { label: 'Aguardando pagamento', value: 'payment_pending' },
+] as const
+
+type StatusFilter = (typeof statusFilters)[number]['value']
+
+function formatCurrency(cents: number) {
+  return currency.format(cents / 100)
+}
+
+function formatDate(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return dateFormatter.format(date)
+}
+
+function shortOrderId(orderId: string) {
+  return orderId.slice(0, 8).toUpperCase()
+}
+
+function getStoreLabel(storeId: string) {
+  return `Loja ${storeId.slice(0, 8).toUpperCase()}`
+}
+
+function getVisibleStatus(order: Order) {
+  if (order.paymentStatus === 'pending') {
+    return paymentLabels.pending
+  }
+
+  return statusLabels[order.status]
+}
+
+function matchesFilter(order: Order, filter: StatusFilter) {
+  if (filter === 'all') {
+    return true
+  }
+
+  if (filter === 'active') {
+    return !['delivered', 'canceled'].includes(order.status)
+  }
+
+  if (filter === 'payment_pending') {
+    return order.paymentStatus === 'pending'
+  }
+
+  return order.status === filter
+}
+
+function getSummary(orders: Order[]) {
+  return {
+    active: orders.filter((order) => matchesFilter(order, 'active')).length,
+    delivered: orders.filter((order) => order.status === 'delivered').length,
+    pendingPayment: orders.filter((order) => order.paymentStatus === 'pending')
+      .length,
+    totalSpent: orders.reduce(
+      (total, order) =>
+        order.paymentStatus === 'paid' ? total + order.totalInCents : total,
+      0,
+    ),
+  }
 }
 
 export function ClientePedidosPage() {
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(orders[0].id)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'Todos' | 'Em andamento' | 'Entregues' | 'Aguardando pagamento'>('Todos')
-  const [deliveryFilter, setDeliveryFilter] = useState<'Todas' | 'Transportadora expressa' | 'Entrega padrao' | 'Retirada na loja'>('Todas')
-  const [orderFeedback, setOrderFeedback] = useState<Record<string, string | null>>({})
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
+  const ordersQuery = useQuery({
+    queryKey: orderQueryKeys.all,
+    queryFn: listOrders,
+  })
+
+  const orders = ordersQuery.data?.orders ?? []
+  const summary = useMemo(() => getSummary(orders), [orders])
   const filteredOrders = useMemo(() => {
     const query = search.trim().toLowerCase()
 
     return orders.filter((order) => {
-      const normalizedOrderStatus =
-        order.orderStatus === 'Enviado'
-          ? 'Entregues'
-          : order.orderStatus === 'Aguardando pagamento'
-            ? 'Aguardando pagamento'
-            : 'Em andamento'
-
-      const matchesStatus = statusFilter === 'Todos' || normalizedOrderStatus === statusFilter
-      const matchesDelivery = deliveryFilter === 'Todas' || order.deliveryMethod === deliveryFilter
+      const matchesStatus = matchesFilter(order, statusFilter)
 
       if (!query) {
-        return matchesStatus && matchesDelivery
+        return matchesStatus
       }
 
       const matchesSearch =
         order.id.toLowerCase().includes(query) ||
-        order.store.toLowerCase().includes(query) ||
-        order.items.some((item) => item.toLowerCase().includes(query))
+        getStoreLabel(order.storeId).toLowerCase().includes(query) ||
+        order.items.some((item) =>
+          item.productName.toLowerCase().includes(query),
+        )
 
-      return matchesStatus && matchesDelivery && matchesSearch
+      return matchesStatus && matchesSearch
     })
-  }, [deliveryFilter, search, statusFilter])
-
-  function clearFilters() {
-    setSearch('')
-    setStatusFilter('Todos')
-    setDeliveryFilter('Todas')
-  }
-
-  function showFeedback(orderId: string, message: string) {
-    setOrderFeedback((current) => ({
-      ...current,
-      [orderId]: message,
-    }))
-
-    setTimeout(() => {
-      setOrderFeedback((current) => ({
-        ...current,
-        [orderId]: null,
-      }))
-    }, 1800)
-  }
+  }, [orders, search, statusFilter])
 
   return (
-    <main className="relative min-h-[calc(100vh-92px)] overflow-hidden px-6 py-10 sm:px-10 lg:px-16">
-      <div className="pointer-events-none absolute -top-28 right-12 h-64 w-64 rounded-full bg-primary/14 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-72 w-72 rounded-full bg-secondary/14 blur-3xl" />
-
-      <section className="mx-auto w-full max-w-7xl space-y-6 rounded-3xl bg-surface/85 p-6 shadow-[0_18px_40px_-14px_rgba(15,23,42,0.16)] backdrop-blur-xl md:p-8">
+    <main className="min-h-[calc(100vh-76px)] bg-[#eef2f7] px-4 py-8 sm:px-6 lg:px-10">
+      <section className="mx-auto w-full max-w-screen-2xl space-y-6">
         <div className="space-y-2">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-foreground-subtle transition-colors hover:text-primary"
-          >
-            <ArrowLeft className="size-4" />
-            Voltar para a home
-          </Link>
-          <h1 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">Meus pedidos</h1>
+          <h1 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">
+            Meus pedidos
+          </h1>
           <p className="text-sm text-foreground-subtle sm:text-base">
-            Acompanhe status, pagamento e entrega dos seus pedidos em um so lugar.
+            Acompanhe status, pagamento e entrega dos seus pedidos em um so
+            lugar.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {summaryCards.map((item) => {
-            const Icon = item.icon
-            return (
-              <Card key={item.label} className="rounded-2xl py-0">
-                <CardContent className="flex items-center justify-between p-5">
-                  <div>
-                    <p className="text-sm text-foreground-subtle">{item.label}</p>
-                    <p className="mt-1 font-heading text-2xl font-semibold text-foreground">{item.value}</p>
-                  </div>
-                  <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="size-4" />
-                  </span>
-                </CardContent>
-              </Card>
-            )
-          })}
+          <SummaryCard
+            icon={Truck}
+            label="Em andamento"
+            value={String(summary.active)}
+          />
+          <SummaryCard
+            icon={PackageCheck}
+            label="Entregues"
+            value={String(summary.delivered)}
+          />
+          <SummaryCard
+            icon={CreditCard}
+            label="Aguardando pagamento"
+            value={String(summary.pendingPayment)}
+          />
+          <SummaryCard
+            icon={CircleDollarSign}
+            label="Total gasto"
+            value={formatCurrency(summary.totalSpent)}
+          />
         </div>
 
-        <Card className="rounded-2xl py-0">
-          <CardHeader className="px-5 pt-5 pb-3">
-            <CardTitle>Busca e filtros</CardTitle>
-            <CardDescription>Encontre pedidos por codigo, loja, produto, status e entrega</CardDescription>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            <div className="space-y-3 rounded-xl bg-surface-alt/60 p-3">
+        <div className="rounded-xl border border-border/70 bg-white p-4 shadow-sm">
+          <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="relative">
+              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground-subtle" />
               <Input
+                className="h-11 pl-10"
+                placeholder="Busque por pedido, loja ou produto..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Busque por pedido, loja ou produto..."
               />
+            </div>
 
-              <div className="flex flex-wrap gap-2">
-                {(['Todos', 'Em andamento', 'Entregues', 'Aguardando pagamento'] as const).map((status) => (
-                  <Button
-                    key={status}
-                    type="button"
-                    size="sm"
-                    variant={statusFilter === status ? 'default' : 'outline'}
-                    onClick={() => setStatusFilter(status)}
-                  >
-                    {status}
-                  </Button>
-                ))}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {(['Todas', 'Transportadora expressa', 'Entrega padrao', 'Retirada na loja'] as const).map((delivery) => (
-                  <Button
-                    key={delivery}
-                    type="button"
-                    size="sm"
-                    variant={deliveryFilter === delivery ? 'secondary' : 'outline'}
-                    onClick={() => setDeliveryFilter(delivery)}
-                  >
-                    {delivery}
-                  </Button>
-                ))}
-              </div>
-
-              <div className="flex justify-end">
-                <Button type="button" size="sm" variant="ghost" onClick={clearFilters}>
-                  Limpar filtros
+            <div className="flex flex-wrap gap-2">
+              {statusFilters.map((filter) => (
+                <Button
+                  key={filter.value}
+                  type="button"
+                  size="lg"
+                  variant={
+                    statusFilter === filter.value ? 'default' : 'outline'
+                  }
+                  onClick={() => setStatusFilter(filter.value)}
+                >
+                  {filter.label}
                 </Button>
-              </div>
-
-              <p className="text-sm text-foreground-subtle">{filteredOrders.length} pedidos encontrados</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl py-0">
-          <CardHeader className="px-5 pt-5 pb-3">
-            <CardTitle>Lista de pedidos</CardTitle>
-            <CardDescription>Dados simulados locais para acompanhamento do cliente</CardDescription>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            <div className="space-y-3">
-              {filteredOrders.map((order) => (
-                <article key={order.id} className="rounded-xl bg-surface-alt/75 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-foreground">{order.id}</p>
-                      <p className="text-sm text-foreground-subtle">{order.store}</p>
-                    </div>
-                    <span className="text-sm text-foreground-subtle">{order.date}</span>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Badge variant={orderVariant(order.orderStatus)}>{order.orderStatus}</Badge>
-                    <Badge variant={paymentVariant(order.paymentStatus)}>{order.paymentStatus}</Badge>
-                    <Badge variant="outline">{order.deliveryMethod}</Badge>
-                  </div>
-
-                  <p className="mt-3 text-sm font-semibold text-foreground">Total: {order.total}</p>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-8"
-                      onClick={() => setExpandedOrderId((value) => (value === order.id ? null : order.id))}
-                    >
-                      Ver detalhes
-                    </Button>
-                  </div>
-
-                  {expandedOrderId === order.id ? (
-                    <div className="mt-3 grid gap-2 rounded-xl bg-surface px-3 py-3 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-foreground-subtle">Status do pedido</span>
-                        <span className="font-medium text-foreground">{order.orderStatus}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-foreground-subtle">Status do pagamento</span>
-                        <span className="font-medium text-foreground">{order.paymentStatus}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-foreground-subtle">Entrega</span>
-                        <span className="font-medium text-foreground">{order.deliveryMethod}</span>
-                      </div>
-                      <div>
-                        <span className="text-foreground-subtle">Itens comprados</span>
-                        <ul className="mt-1 space-y-1">
-                          {order.items.map((item) => (
-                            <li key={item} className="text-foreground">- {item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="rounded-lg bg-surface-alt/70 px-2 py-2 text-foreground-subtle">{order.tracking}</div>
-                      <div className="rounded-lg bg-surface-alt/70 px-2 py-2 text-foreground-subtle">{order.supportInfo}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-8"
-                          onClick={() => showFeedback(order.id, `Rastreamento aberto para ${order.id}.`)}
-                        >
-                          Acompanhar entrega
-                        </Button>
-                        <Button
-                          type="button"
-                          className="h-8"
-                          onClick={() => showFeedback(order.id, `Itens do pedido ${order.id} adicionados ao carrinho.`)}
-                        >
-                          Comprar novamente
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="h-8"
-                          onClick={() => showFeedback(order.id, `Canal de suporte aberto para ${order.id}.`)}
-                        >
-                          <Headset className="size-4" />
-                          Solicitar suporte
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-8"
-                          render={<Link to={`/cliente/pedidos/${order.id.replace('#', '')}`} />}
-                        >
-                          Abrir pagina completa
-                        </Button>
-                      </div>
-
-                      {orderFeedback[order.id] ? (
-                        <div className="rounded-lg bg-secondary/12 px-2 py-2 text-secondary-foreground">
-                          {orderFeedback[order.id]}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </article>
               ))}
-
-              {filteredOrders.length === 0 ? (
-                <div className="rounded-xl bg-surface-alt/75 p-4 text-sm text-foreground-subtle">
-                  Nenhum pedido encontrado para os filtros selecionados.
-                </div>
-              ) : null}
-
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {ordersQuery.isLoading ? (
+            <StateBox message="Carregando seus pedidos..." />
+          ) : null}
+
+          {ordersQuery.isError ? (
+            <StateBox message="Nao foi possivel carregar seus pedidos agora." />
+          ) : null}
+
+          {!ordersQuery.isLoading && filteredOrders.length === 0 ? (
+            <StateBox message="Nenhum pedido encontrado para esses filtros." />
+          ) : null}
+
+          {filteredOrders.map((order) => (
+            <OrderCard key={order.id} order={order} />
+          ))}
+        </div>
       </section>
     </main>
+  )
+}
+
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Truck
+  label: string
+  value: string
+}) {
+  return (
+    <article className="flex min-h-24 items-center justify-between rounded-2xl border border-border/70 bg-white p-5 shadow-sm">
+      <div>
+        <p className="text-sm font-medium text-foreground-subtle">{label}</p>
+        <p className="mt-1 font-heading text-2xl font-bold text-foreground">
+          {value}
+        </p>
+      </div>
+      <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
+        <Icon className="size-5" />
+      </span>
+    </article>
+  )
+}
+
+function StateBox({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-white p-6 text-sm font-medium text-foreground-subtle shadow-sm">
+      {message}
+    </div>
+  )
+}
+
+function OrderCard({ order }: { order: Order }) {
+  const firstItem = order.items[0]
+  const extraItemsCount = Math.max(order.items.length - 1, 0)
+  const status = getVisibleStatus(order)
+
+  return (
+    <article className="overflow-hidden rounded-sm border border-border/80 bg-white shadow-sm">
+      <header className="flex flex-col gap-3 border-border/80 border-b p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="text-sm text-foreground-subtle">
+          <span className="font-bold text-foreground">Pedido:</span>{' '}
+          <span>{shortOrderId(order.id)}</span>
+          <span className="mx-2">-</span>
+          <span>{formatDate(order.createdAt)}</span>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            className="h-9 rounded-sm bg-secondary px-4 text-secondary-foreground hover:bg-secondary-hover"
+            render={
+              <Link
+                to="/cliente/pedidos/$pedidoId"
+                params={{ pedidoId: order.id }}
+              />
+            }
+          >
+            <ShoppingCart className="size-4" />
+            Gerenciar pedido
+          </Button>
+          <Button
+            variant="outline"
+            className="h-9 rounded-sm border-secondary px-4 text-secondary hover:bg-secondary/10"
+            render={
+              <Link
+                to="/cliente/pedidos/$pedidoId"
+                params={{ pedidoId: order.id }}
+              />
+            }
+          >
+            Ver detalhes
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      </header>
+
+      <div className="border-border/80 border-b px-4 py-3">
+        <p
+          className={`text-sm font-bold ${
+            order.status === 'canceled' ? 'text-destructive' : 'text-green-600'
+          }`}
+        >
+          {status}.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2 border-border/80 border-b px-4 py-3 text-sm font-bold text-foreground-subtle">
+        <CreditCard className="size-4 text-secondary" />
+        Pagamento via {paymentMethodLabels[order.paymentMethod]}.
+        <span className="font-semibold text-foreground-subtle">
+          {paymentLabels[order.paymentStatus]}.
+        </span>
+      </div>
+
+      <div className="grid gap-4 p-4 md:grid-cols-[5rem_1fr_auto] md:items-center">
+        <img
+          src={firstItem?.productImageUrl ?? productBlazerImage}
+          alt={firstItem?.productName ?? 'Produto do pedido'}
+          className="size-20 rounded-sm border border-border/70 object-cover"
+        />
+
+        <div className="min-w-0">
+          <span className="inline-flex rounded-sm bg-surface-alt px-1.5 py-0.5 text-xs font-medium text-foreground-subtle">
+            Vendido e entregue por {getStoreLabel(order.storeId)}
+          </span>
+          <p className="mt-2 font-bold text-foreground">
+            {firstItem?.productName ?? 'Pedido sem itens'}
+          </p>
+          <p className="mt-1 text-sm text-foreground-subtle">
+            Quantidade: {firstItem?.quantity ?? 0}
+            {extraItemsCount > 0 ? ` + ${extraItemsCount} item(ns)` : ''}
+          </p>
+          {order.trackingCode ? (
+            <p className="mt-1 flex items-center gap-1 text-sm text-foreground-subtle">
+              <ReceiptText className="size-4" />
+              Rastreio {order.trackingCode}
+            </p>
+          ) : null}
+        </div>
+
+        <p className="font-heading text-lg font-bold text-foreground">
+          {formatCurrency(order.totalInCents)}
+        </p>
+      </div>
+    </article>
   )
 }
