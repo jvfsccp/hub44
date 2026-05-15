@@ -1,11 +1,13 @@
 import { CategoriesRepository } from '@/repositories/categories-repository'
-import type { Product } from '@/repositories/products-repository'
+import type { Product, ProductStatus } from '@/repositories/products-repository'
 import { ProductsRepository } from '@/repositories/products-repository'
 import { StoresService } from '@/services/stores-service'
 import { getImageExtension } from '@/utils/image-extension'
 import type { MultipartImage } from '@/utils/multipart-form'
 import { createSlug } from '@/utils/slug'
 import { uploadStoreImage } from '@/utils/upload-store-image'
+
+export type { ProductStatus } from '@/repositories/products-repository'
 
 type CreateProductInput = {
   ownerId: string
@@ -16,6 +18,20 @@ type CreateProductInput = {
   description?: string | null
   priceInCents: number
   stock?: number
+  status?: ProductStatus
+}
+
+type UpdateProductInput = {
+  ownerId: string
+  storeId: string
+  productId: string
+  categoryId?: string
+  name?: string
+  slug?: string
+  description?: string | null
+  priceInCents?: number
+  stock?: number
+  status?: ProductStatus
 }
 
 type UploadProductImageInput = {
@@ -88,7 +104,101 @@ export class ProductsService {
       description: input.description ?? null,
       priceInCents: input.priceInCents,
       stock: input.stock ?? 0,
+      status: input.status ?? 'active',
     })
+  }
+
+  async listByStore(ownerId: string, storeId: string) {
+    await this.storesService.getOwnedStore(storeId, ownerId)
+
+    return this.productsRepository.listByStoreId(storeId)
+  }
+
+  async update(input: UpdateProductInput) {
+    await this.storesService.getOwnedStore(input.storeId, input.ownerId)
+
+    const product = await this.productsRepository.findByStoreIdAndId(
+      input.storeId,
+      input.productId,
+    )
+
+    if (!product) {
+      throw new ProductNotFoundError()
+    }
+
+    if (input.categoryId) {
+      const category = await this.categoriesRepository.findById(
+        input.categoryId,
+      )
+
+      if (!category) {
+        throw new CategoryNotFoundError()
+      }
+    }
+
+    const slug =
+      input.slug || input.name ? createSlug(input.slug ?? input.name ?? '') : ''
+
+    if (input.slug && !slug) {
+      throw new InvalidSlugError()
+    }
+
+    if (slug) {
+      const existingProduct =
+        await this.productsRepository.findByStoreIdAndSlug(input.storeId, slug)
+
+      if (existingProduct && existingProduct.id !== input.productId) {
+        throw new ProductAlreadyExistsError()
+      }
+    }
+
+    const updatedProduct = await this.productsRepository.update(
+      input.productId,
+      {
+        categoryId: input.categoryId,
+        name: input.name,
+        ...(slug ? { slug } : {}),
+        description: input.description,
+        priceInCents: input.priceInCents,
+        stock: input.stock,
+        status: input.status,
+      },
+    )
+
+    if (!updatedProduct) {
+      throw new ProductNotFoundError()
+    }
+
+    return updatedProduct
+  }
+
+  async updateStatus(input: {
+    ownerId: string
+    storeId: string
+    productId: string
+    status: ProductStatus
+  }) {
+    await this.storesService.getOwnedStore(input.storeId, input.ownerId)
+
+    const product = await this.productsRepository.findByStoreIdAndId(
+      input.storeId,
+      input.productId,
+    )
+
+    if (!product) {
+      throw new ProductNotFoundError()
+    }
+
+    const updatedProduct = await this.productsRepository.updateStatus(
+      input.productId,
+      input.status,
+    )
+
+    if (!updatedProduct) {
+      throw new ProductNotFoundError()
+    }
+
+    return updatedProduct
   }
 
   async uploadImage(input: UploadProductImageInput) {
