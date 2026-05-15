@@ -1,0 +1,27 @@
+meta {
+  name: 04 - Criar endereco da loja
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/stores/{{storeId}}/addresses
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+body:json {
+  {
+    "street": "Rua 44",
+    "number": "100",
+    "complement": "Loja 12",
+    "district": "Centro",
+    "city": "Goiania",
+    "state": "GO",
+    "zipCode": "74000000"
+  }
+}

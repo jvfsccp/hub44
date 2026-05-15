@@ -1,3 +1,5 @@
-export { default as products } from './products'
-export { default as stores } from './stores'
+export { default as addresses } from './addresses'
+export { default as categories } from './categories'
+export { default as products, productStatuses } from './products'
+export { default as stores, storeStatuses } from './stores'
 export { default as users, userRoles } from './users'

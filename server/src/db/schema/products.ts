@@ -1,7 +1,22 @@
-import { index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import {
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
 import { uuidv7 } from 'uuidv7'
 
+import categories from './categories'
 import stores from './stores'
+
+export const productStatuses = pgEnum('product_status', [
+  'active',
+  'inactive',
+  'out_of_stock',
+])
 
 const products = pgTable(
   'products',
@@ -12,14 +27,24 @@ const products = pgTable(
     storeId: text('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
+    categoryId: text('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'restrict' }),
     name: text('name').notNull(),
-    description: text('description').notNull(),
+    slug: text('slug').notNull(),
+    description: text('description'),
     priceInCents: integer('price_in_cents').notNull(),
-    imageUrl: text('image_url').notNull(),
+    stock: integer('stock').notNull().default(0),
+    imageUrl: text('image_url'),
+    status: productStatuses('status').notNull().default('active'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (table) => [index('products_store_id_idx').on(table.storeId)],
+  (table) => [
+    index('products_store_id_idx').on(table.storeId),
+    index('products_category_id_idx').on(table.categoryId),
+    uniqueIndex('products_store_slug_unique').on(table.storeId, table.slug),
+  ],
 )
 
 export default products

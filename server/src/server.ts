@@ -13,7 +13,9 @@ import {
 } from 'fastify-type-provider-zod'
 
 import { env } from '@/env'
+import { addressesRoutes } from '@/routes/addresses-routes'
 import { authRoutes } from '@/routes/auth-routes'
+import { categoriesRoutes } from '@/routes/categories-routes'
 import { storesRoutes } from '@/routes/stores-routes'
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
@@ -61,7 +63,9 @@ app.register(ScalarApiReference, {
 })
 
 app.register(authRoutes)
+app.register(categoriesRoutes)
 app.register(storesRoutes)
+app.register(addressesRoutes)
 
 app
   .listen({ port: env.PORT, host: '0.0.0.0' })

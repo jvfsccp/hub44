@@ -57,6 +57,7 @@ No PowerShell, prefira `pnpm.cmd` quando `pnpm` for bloqueado pela policy de scr
 
 - Para JSON, use schemas Zod nas rotas.
 - Para `multipart/form-data`, use `request.parts()` via util dedicado e valide campos manualmente.
+- Cadastros de dados devem usar JSON; reserve multipart para upload de arquivos.
 - Precos de produtos sao persistidos como `price_in_cents`.
 
 ## Expected Workflow
