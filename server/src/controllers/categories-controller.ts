@@ -6,6 +6,7 @@ import {
   InvalidSlugError,
   toCategoryResponse,
 } from '@/services/categories-service'
+import { sendInternalServerError } from '@/utils/internal-server-error'
 
 type CreateCategoryRequest = FastifyRequest<{
   Body: {
@@ -34,7 +35,7 @@ export class CategoriesController {
         return reply.status(400).send({ message: error.message })
       }
 
-      return reply.status(500).send({ message: 'Internal server error' })
+      return sendInternalServerError(error, reply, 'categories.create')
     }
   }
 }

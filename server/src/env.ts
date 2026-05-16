@@ -11,6 +11,9 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(32),
   SUPABASE_STORAGE_BUCKET: z.string().min(1),
   KAFKA_BROKER: z.string().min(1).default('localhost:9092'),
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+    .default('info'),
 })
 
 export const env = envSchema.parse(process.env)

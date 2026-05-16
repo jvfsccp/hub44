@@ -13,6 +13,7 @@ import {
   toOrderResponse,
 } from '@/services/orders-service'
 import { StoreAccessDeniedError } from '@/services/stores-service'
+import { sendInternalServerError } from '@/utils/internal-server-error'
 
 type CreateOrderRequest = FastifyRequest<{
   Body: {
@@ -170,5 +171,5 @@ function handleOrderError(error: unknown, reply: FastifyReply) {
     })
   }
 
-  return reply.status(500).send({ message: 'Internal server error' })
+  return sendInternalServerError(error, reply, 'orders')
 }

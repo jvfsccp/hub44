@@ -8,6 +8,7 @@ import {
   UserNotFoundError,
 } from '@/services/auth-service'
 import type { AuthTokenPayload } from '@/types/auth'
+import { sendInternalServerError } from '@/utils/internal-server-error'
 
 const accessTokenMaxAge = '15m'
 const refreshTokenMaxAge = '7d'
@@ -34,7 +35,7 @@ export class AuthController {
         return reply.status(409).send({ message: error.message })
       }
 
-      return reply.status(500).send({ message: 'Internal server error' })
+      return sendInternalServerError(error, reply, 'auth.register')
     }
   }
 
@@ -60,7 +61,7 @@ export class AuthController {
         return reply.status(401).send({ message: error.message })
       }
 
-      return reply.status(500).send({ message: 'Internal server error' })
+      return sendInternalServerError(error, reply, 'auth.login')
     }
   }
 
