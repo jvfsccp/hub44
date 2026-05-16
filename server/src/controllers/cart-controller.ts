@@ -7,6 +7,7 @@ import {
   CartService,
   EmptyCartError,
 } from '@/services/cart-service'
+import { sendInternalServerError } from '@/utils/internal-server-error'
 
 type GetCartRequest = FastifyRequest<{
   Querystring: {
@@ -138,5 +139,5 @@ export function handleCartError(error: unknown, reply: FastifyReply) {
     return reply.status(409).send({ message: error.message })
   }
 
-  return reply.status(500).send({ message: 'Internal server error' })
+  return sendInternalServerError(error, reply, 'cart')
 }

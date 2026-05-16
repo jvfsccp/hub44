@@ -6,6 +6,7 @@ import {
   UserNotFoundError,
 } from '@/services/auth-service'
 import { toUserProfileResponse, UsersService } from '@/services/users-service'
+import { sendInternalServerError } from '@/utils/internal-server-error'
 
 type UpdateProfileRequest = FastifyRequest<{
   Body: Partial<{
@@ -86,5 +87,5 @@ function handleUsersError(error: unknown, reply: FastifyReply) {
     return reply.status(401).send({ message: error.message })
   }
 
-  return reply.status(500).send({ message: 'Internal server error' })
+  return sendInternalServerError(error, reply, 'users')
 }

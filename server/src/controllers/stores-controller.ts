@@ -17,6 +17,7 @@ import {
   StoresService,
   toStoreResponse,
 } from '@/services/stores-service'
+import { sendInternalServerError } from '@/utils/internal-server-error'
 import { MultipartFormError, readMultipartForm } from '@/utils/multipart-form'
 
 type CreateStoreRequest = FastifyRequest<{
@@ -165,7 +166,7 @@ export function handleSharedError(error: unknown, reply: FastifyReply) {
     })
   }
 
-  return reply.status(500).send({ message: 'Internal server error' })
+  return sendInternalServerError(error, reply, 'stores')
 }
 
 function getMultipartErrorStatus(error: unknown) {
