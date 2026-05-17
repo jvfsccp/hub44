@@ -7,7 +7,6 @@ import {
   ProductNotFoundError,
   type ProductStatus,
   ProductsService,
-  toProductResponse,
 } from '@/services/products-service'
 import {
   InvalidSlugError as InvalidStoreSlugError,
@@ -84,7 +83,7 @@ export class StoresController {
       })
 
       return reply.status(201).send({
-        product: toProductResponse(product),
+        product: await this.productsService.toResponse(product),
       })
     } catch (error) {
       return handleProductError(error, reply)
@@ -120,7 +119,7 @@ export class StoresController {
       })
 
       return reply.status(200).send({
-        product: toProductResponse(product),
+        product: await this.productsService.toResponse(product),
       })
     } catch (error) {
       return handleProductError(error, reply)
