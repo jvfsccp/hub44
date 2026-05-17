@@ -4,7 +4,6 @@ import { handleProductError } from '@/controllers/stores-controller'
 import {
   type ProductStatus,
   ProductsService,
-  toProductResponse,
 } from '@/services/products-service'
 import { SellerService } from '@/services/seller-service'
 import { readMultipartForm } from '@/utils/multipart-form'
@@ -59,7 +58,7 @@ export class SellerProductsController {
       )
 
       return reply.status(200).send({
-        products: products.map(toProductResponse),
+        products: await this.productsService.toResponses(products),
       })
     } catch (error) {
       return handleProductError(error, reply)
@@ -77,7 +76,9 @@ export class SellerProductsController {
         status: request.body.status ?? 'draft',
       })
 
-      return reply.status(201).send({ product: toProductResponse(product) })
+      return reply
+        .status(201)
+        .send({ product: await this.productsService.toResponse(product) })
     } catch (error) {
       return handleProductError(error, reply)
     }
@@ -94,7 +95,9 @@ export class SellerProductsController {
         ...request.body,
       })
 
-      return reply.status(200).send({ product: toProductResponse(product) })
+      return reply
+        .status(200)
+        .send({ product: await this.productsService.toResponse(product) })
     } catch (error) {
       return handleProductError(error, reply)
     }
@@ -114,7 +117,9 @@ export class SellerProductsController {
         status: request.body.status,
       })
 
-      return reply.status(200).send({ product: toProductResponse(product) })
+      return reply
+        .status(200)
+        .send({ product: await this.productsService.toResponse(product) })
     } catch (error) {
       return handleProductError(error, reply)
     }
@@ -141,7 +146,9 @@ export class SellerProductsController {
         image,
       })
 
-      return reply.status(200).send({ product: toProductResponse(product) })
+      return reply
+        .status(200)
+        .send({ product: await this.productsService.toResponse(product) })
     } catch (error) {
       return handleProductError(error, reply)
     }
