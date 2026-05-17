@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { ShoppingCart } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 
 import productSneakerImage from '@/assets/stitch/product-sneaker.png'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,7 @@ export function ProdutoDetalhePage() {
   const queryClient = useQueryClient()
   const params = useParams({ from: '/produto/$productId' })
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
   const hasToken = Boolean(getAccessToken())
 
   const productsQuery = useQuery({
@@ -31,6 +32,18 @@ export function ProdutoDetalhePage() {
       productsQuery.data?.products.find((item) => item.id === params.productId),
     [params.productId, productsQuery.data?.products],
   )
+  const productImages = useMemo(() => {
+    if (!product) {
+      return [productSneakerImage]
+    }
+
+    if (product.imageUrls.length > 0) {
+      return product.imageUrls
+    }
+
+    return product.imageUrl ? [product.imageUrl] : [productSneakerImage]
+  }, [product])
+  const activeImage = productImages[activeImageIndex] ?? productImages[0]
   const addToCartMutation = useMutation({
     mutationFn: () => addCartItem({ productId: params.productId, quantity: 1 }),
     onSuccess: () => {
@@ -65,6 +78,10 @@ export function ProdutoDetalhePage() {
     }
   }
 
+  useEffect(() => {
+    setActiveImageIndex(0)
+  }, [params.productId])
+
   if (productsQuery.isLoading) {
     return (
       <main className="grid min-h-[calc(100vh-92px)] place-items-center px-6 py-10 text-foreground-subtle">
@@ -90,12 +107,71 @@ export function ProdutoDetalhePage() {
     <main className="min-h-[calc(100vh-92px)] bg-surface-alt px-6 py-10 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-surface shadow-[0_18px_40px_-14px_rgba(15,23,42,0.18)]">
         <div className="grid grid-cols-1 gap-8 p-6 md:grid-cols-2 md:p-8">
-          <div>
-            <img
-              src={product.imageUrl ?? productSneakerImage}
-              alt={product.name}
-              className="h-[500px] w-full rounded-2xl object-cover"
-            />
+          <div className="space-y-3">
+            <div className="relative overflow-hidden rounded-2xl bg-surface-alt">
+              <img
+                src={activeImage}
+                alt={product.name}
+                className="h-[500px] w-full object-cover"
+              />
+
+              {productImages.length > 1 ? (
+                <>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute top-1/2 left-3 size-10 -translate-y-1/2 rounded-full bg-surface/90"
+                    aria-label="Imagem anterior"
+                    onClick={() =>
+                      setActiveImageIndex((current) =>
+                        current === 0 ? productImages.length - 1 : current - 1,
+                      )
+                    }
+                  >
+                    <ChevronLeft className="size-5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute top-1/2 right-3 size-10 -translate-y-1/2 rounded-full bg-surface/90"
+                    aria-label="Proxima imagem"
+                    onClick={() =>
+                      setActiveImageIndex((current) =>
+                        current === productImages.length - 1 ? 0 : current + 1,
+                      )
+                    }
+                  >
+                    <ChevronRight className="size-5" />
+                  </Button>
+                </>
+              ) : null}
+            </div>
+
+            {productImages.length > 1 ? (
+              <div className="grid grid-cols-4 gap-3">
+                {productImages.map((imageUrl, index) => (
+                  <button
+                    key={`${imageUrl}-${index}`}
+                    type="button"
+                    className={`aspect-square overflow-hidden rounded-xl border-2 bg-surface-alt transition ${
+                      activeImageIndex === index
+                        ? 'border-primary'
+                        : 'border-transparent hover:border-primary/40'
+                    }`}
+                    aria-label={`Ver imagem ${index + 1}`}
+                    onClick={() => setActiveImageIndex(index)}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={product.name}
+                      className="size-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col justify-between">

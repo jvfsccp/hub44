@@ -1,11 +1,13 @@
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 
 import { db } from '@/db'
 import categories from '@/db/schema/categories'
+import productImages from '@/db/schema/product-images'
 import products from '@/db/schema/products'
 import stores from '@/db/schema/stores'
 
 export type Product = typeof products.$inferSelect
+export type ProductImage = typeof productImages.$inferSelect
 export type ProductStatus = Product['status']
 
 export class ProductsRepository {
@@ -105,6 +107,30 @@ export class ProductsRepository {
     return product ?? null
   }
 
+  async listImagesByProductId(productId: string) {
+    return db
+      .select()
+      .from(productImages)
+      .where(eq(productImages.productId, productId))
+      .orderBy(asc(productImages.position), asc(productImages.createdAt))
+  }
+
+  async listImagesByProductIds(productIds: string[]) {
+    if (productIds.length === 0) {
+      return []
+    }
+
+    return db
+      .select()
+      .from(productImages)
+      .where(inArray(productImages.productId, productIds))
+      .orderBy(
+        asc(productImages.productId),
+        asc(productImages.position),
+        asc(productImages.createdAt),
+      )
+  }
+
   async findByStoreIdAndSlug(storeId: string, slug: string) {
     const [product] = await db
       .select()
@@ -178,5 +204,32 @@ export class ProductsRepository {
       .returning()
 
     return product
+  }
+
+  async createImage(input: {
+    id: string
+    productId: string
+    path: string
+    imageUrl: string
+  }) {
+    const [nextPosition] = await db
+      .select({
+        value: sql<number>`coalesce(max(${productImages.position}), 0) + 1`,
+      })
+      .from(productImages)
+      .where(eq(productImages.productId, input.productId))
+
+    const [image] = await db
+      .insert(productImages)
+      .values({
+        id: input.id,
+        productId: input.productId,
+        path: input.path,
+        imageUrl: input.imageUrl,
+        position: nextPosition?.value ?? 1,
+      })
+      .returning()
+
+    return image
   }
 }
