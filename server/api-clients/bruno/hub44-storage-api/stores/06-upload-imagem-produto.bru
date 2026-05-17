@@ -1,7 +1,7 @@
 meta {
-  name: 06 - Upload imagem do produto
+  name: 08 - Upload imagem do produto
   type: http
-  seq: 7
+  seq: 9
 }
 
 post {
@@ -16,6 +16,10 @@ headers {
 
 body:multipart-form {
   image: @file(./produto.jpg)
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:3333
 }
 
 docs {
