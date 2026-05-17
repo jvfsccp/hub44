@@ -20,6 +20,8 @@ const storeSchema = z.object({
   description: z.string(),
   cnpj: z.string(),
   phone: z.string(),
+  logoUrl: z.string().nullable(),
+  bannerUrl: z.string().nullable(),
   status: storeStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),

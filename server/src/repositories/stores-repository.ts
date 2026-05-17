@@ -5,6 +5,7 @@ import stores from '@/db/schema/stores'
 
 export type Store = typeof stores.$inferSelect
 export type StoreStatus = Store['status']
+export type StoreImageKind = 'logo' | 'banner'
 
 export class StoresRepository {
   async listPublic() {
@@ -76,6 +77,8 @@ export class StoresRepository {
       description: string
       cnpj: string
       phone: string
+      logoUrl: string | null
+      bannerUrl: string | null
     }>,
   ) {
     const [store] = await db
@@ -95,6 +98,22 @@ export class StoresRepository {
       .update(stores)
       .set({
         status,
+        updatedAt: new Date(),
+      })
+      .where(eq(stores.id, id))
+      .returning()
+
+    return store ?? null
+  }
+
+  async updateImageUrl(id: string, kind: StoreImageKind, imageUrl: string) {
+    const imageColumn =
+      kind === 'logo' ? { logoUrl: imageUrl } : { bannerUrl: imageUrl }
+
+    const [store] = await db
+      .update(stores)
+      .set({
+        ...imageColumn,
         updatedAt: new Date(),
       })
       .where(eq(stores.id, id))
