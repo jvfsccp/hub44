@@ -7,6 +7,7 @@ import { getImageExtension } from '@/utils/image-extension'
 import type { MultipartImage } from '@/utils/multipart-form'
 import { createSlug } from '@/utils/slug'
 import { uploadStoreImage } from '@/utils/upload-store-image'
+import { uuidv7 } from 'uuidv7'
 
 export type { ProductStatus } from '@/repositories/products-repository'
 
@@ -234,22 +235,81 @@ export class ProductsService {
       throw new ProductNotFoundError()
     }
 
+    const imageId = uuidv7()
     const imageUpload = await uploadStoreImage({
       fileBuffer: input.image.buffer,
-      path: `${input.storeId}/products/${input.productId}.${getImageExtension(
-        input.image.contentType,
-      )}`,
+      path: `${input.storeId}/products/${input.productId}/${imageId}.${getImageExtension(input.image.contentType)}`,
       contentType: input.image.contentType,
     })
 
-    return this.productsRepository.updateImageUrl(
+    await this.productsRepository.createImage({
+      id: imageId,
+      productId: product.id,
+      path: imageUpload.path,
+      imageUrl: imageUpload.publicUrl,
+    })
+
+    if (product.imageUrl) {
+      return product
+    }
+
+    const updatedProduct = await this.productsRepository.updateImageUrl(
       product.id,
       imageUpload.publicUrl,
     )
+
+    if (!updatedProduct) {
+      throw new ProductNotFoundError()
+    }
+
+    return updatedProduct
+  }
+
+  async toResponse(product: Product) {
+    const images = await this.productsRepository.listImagesByProductId(
+      product.id,
+    )
+
+    return toProductResponse(
+      product,
+      images.map((image) => image.imageUrl),
+    )
+  }
+
+  async toResponses(products: Product[]) {
+    const imageUrlsByProductId = await this.getImageUrlsByProductIds(
+      products.map((product) => product.id),
+    )
+
+    return products.map((product) =>
+      toProductResponse(product, imageUrlsByProductId.get(product.id) ?? []),
+    )
+  }
+
+  async getImageUrlsByProductIds(productIds: string[]) {
+    const images =
+      await this.productsRepository.listImagesByProductIds(productIds)
+    const imageUrlsByProductId = new Map<string, string[]>()
+
+    for (const image of images) {
+      imageUrlsByProductId.set(image.productId, [
+        ...(imageUrlsByProductId.get(image.productId) ?? []),
+        image.imageUrl,
+      ])
+    }
+
+    return imageUrlsByProductId
   }
 }
 
-export function toProductResponse(product: Product) {
+export function toProductResponse(product: Product, imageUrls: string[] = []) {
+  const responseImageUrls =
+    imageUrls.length > 0
+      ? imageUrls
+      : product.imageUrl
+        ? [product.imageUrl]
+        : []
+
   return {
     id: product.id,
     storeId: product.storeId,
@@ -260,6 +320,7 @@ export function toProductResponse(product: Product) {
     priceInCents: product.priceInCents,
     stock: product.stock,
     imageUrl: product.imageUrl,
+    imageUrls: responseImageUrls,
     status: product.status,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
