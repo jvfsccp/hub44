@@ -37,6 +37,7 @@ export type Product = {
   priceInCents: number
   stock: number
   imageUrl: string | null
+  imageUrls: string[]
   status: 'draft' | 'active' | 'paused' | 'inactive' | 'out_of_stock'
   createdAt: string
   updatedAt: string
