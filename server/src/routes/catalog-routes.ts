@@ -51,6 +51,7 @@ const productCatalogSchema = z.object({
   priceInCents: z.number().int(),
   stock: z.number().int(),
   imageUrl: z.string().nullable(),
+  imageUrls: z.array(z.string()),
   status: productStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
