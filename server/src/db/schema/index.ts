@@ -4,6 +4,7 @@ export { default as categories } from './categories'
 export { default as notifications, notificationTypes } from './notifications'
 export { default as orderEvents } from './order-events'
 export { default as orderItems } from './order-items'
+export { default as productImages } from './product-images'
 export {
   default as orders,
   orderStatuses,
