@@ -10,7 +10,7 @@ import {
 import type { AuthTokenPayload } from '@/types/auth'
 import { sendInternalServerError } from '@/utils/internal-server-error'
 
-const accessTokenMaxAge = '15m'
+const accessTokenMaxAge = '3h'
 const refreshTokenMaxAge = '7d'
 const refreshCookieName = 'refreshToken'
 
