@@ -9,9 +9,11 @@ import {
 import {
   InvalidSlugError,
   StoreAlreadyExistsError,
+  type StoreImageKind,
   toStoreResponse,
 } from '@/services/stores-service'
 import type { AuthTokenPayload } from '@/types/auth'
+import { readMultipartForm } from '@/utils/multipart-form'
 
 const accessTokenMaxAge = '15m'
 
@@ -47,6 +49,8 @@ type UpdateSellerStoreRequest = FastifyRequest<{
     phone: string
   }>
 }>
+
+type UploadSellerStoreImageRequest = FastifyRequest
 
 export class SellerController {
   constructor(private readonly sellerService = new SellerService()) {}
@@ -101,6 +105,41 @@ export class SellerController {
         store: toStoreResponse(result.store),
         addresses: toSellerStoreAddressesResponse(result.addresses),
       })
+    } catch (error) {
+      return handleSellerError(error, reply)
+    }
+  }
+
+  uploadStoreLogo = async (
+    request: UploadSellerStoreImageRequest,
+    reply: FastifyReply,
+  ) => this.uploadStoreImage(request, reply, 'logo')
+
+  uploadStoreBanner = async (
+    request: UploadSellerStoreImageRequest,
+    reply: FastifyReply,
+  ) => this.uploadStoreImage(request, reply, 'banner')
+
+  private async uploadStoreImage(
+    request: UploadSellerStoreImageRequest,
+    reply: FastifyReply,
+    kind: StoreImageKind,
+  ) {
+    try {
+      const form = await readMultipartForm(request, { fileFields: ['image'] })
+      const image = form.files.image
+
+      if (!image) {
+        return reply.status(400).send({ message: 'Field image is required' })
+      }
+
+      const store = await this.sellerService.uploadStoreImage(
+        request.user.sub,
+        kind,
+        image,
+      )
+
+      return reply.status(200).send({ store: toStoreResponse(store) })
     } catch (error) {
       return handleSellerError(error, reply)
     }

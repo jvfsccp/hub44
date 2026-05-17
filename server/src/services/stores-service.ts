@@ -1,6 +1,14 @@
-import type { Store, StoreStatus } from '@/repositories/stores-repository'
+import type {
+  Store,
+  StoreImageKind,
+  StoreStatus,
+} from '@/repositories/stores-repository'
 import { StoresRepository } from '@/repositories/stores-repository'
+import type { MultipartImage } from '@/utils/multipart-form'
 import { createSlug } from '@/utils/slug'
+import { uploadStoreImage } from '@/utils/upload-store-image'
+
+export type { StoreImageKind } from '@/repositories/stores-repository'
 
 type CreateStoreInput = {
   ownerId: string
@@ -9,6 +17,13 @@ type CreateStoreInput = {
   description: string
   cnpj: string
   phone: string
+}
+
+type UploadStoreImageInput = {
+  ownerId: string
+  storeId: string
+  kind: StoreImageKind
+  image: MultipartImage
 }
 
 export class StoreAlreadyExistsError extends Error {
@@ -145,6 +160,28 @@ export class StoresService {
 
     return store
   }
+
+  async uploadImage(input: UploadStoreImageInput) {
+    await this.getOwnedStore(input.storeId, input.ownerId)
+
+    const imageUpload = await uploadStoreImage({
+      fileBuffer: input.image.buffer,
+      path: `${input.storeId}/${input.kind}`,
+      contentType: input.image.contentType,
+    })
+
+    const store = await this.storesRepository.updateImageUrl(
+      input.storeId,
+      input.kind,
+      imageUpload.publicUrl,
+    )
+
+    if (!store) {
+      throw new StoreNotFoundError()
+    }
+
+    return store
+  }
 }
 
 export function toStoreResponse(store: Store) {
@@ -156,6 +193,8 @@ export function toStoreResponse(store: Store) {
     description: store.description,
     cnpj: store.cnpj,
     phone: store.phone,
+    logoUrl: store.logoUrl,
+    bannerUrl: store.bannerUrl,
     status: store.status,
     createdAt: store.createdAt.toISOString(),
     updatedAt: store.updatedAt.toISOString(),

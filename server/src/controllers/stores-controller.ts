@@ -13,6 +13,7 @@ import {
   InvalidSlugError as InvalidStoreSlugError,
   StoreAccessDeniedError,
   StoreAlreadyExistsError,
+  type StoreImageKind,
   StoreNotFoundError,
   StoresService,
   toStoreResponse,
@@ -45,6 +46,10 @@ type CreateProductRequest = FastifyRequest<{
 
 type UploadProductImageRequest = FastifyRequest<{
   Params: { storeId: string; productId: string }
+}>
+
+type UploadStoreImageRequest = FastifyRequest<{
+  Params: { storeId: string }
 }>
 
 export class StoresController {
@@ -85,6 +90,14 @@ export class StoresController {
     }
   }
 
+  uploadLogo = async (request: UploadStoreImageRequest, reply: FastifyReply) =>
+    this.uploadStoreImage(request, reply, 'logo')
+
+  uploadBanner = async (
+    request: UploadStoreImageRequest,
+    reply: FastifyReply,
+  ) => this.uploadStoreImage(request, reply, 'banner')
+
   uploadProductImage = async (
     request: UploadProductImageRequest,
     reply: FastifyReply,
@@ -109,6 +122,34 @@ export class StoresController {
       })
     } catch (error) {
       return handleProductError(error, reply)
+    }
+  }
+
+  private async uploadStoreImage(
+    request: UploadStoreImageRequest,
+    reply: FastifyReply,
+    kind: StoreImageKind,
+  ) {
+    try {
+      const form = await readMultipartForm(request, { fileFields: ['image'] })
+      const image = form.files.image
+
+      if (!image) {
+        return reply.status(400).send({ message: 'Field image is required' })
+      }
+
+      const store = await this.storesService.uploadImage({
+        ownerId: request.user.sub,
+        storeId: request.params.storeId,
+        kind,
+        image,
+      })
+
+      return reply.status(200).send({
+        store: toStoreResponse(store),
+      })
+    } catch (error) {
+      return handleStoreError(error, reply)
     }
   }
 }
