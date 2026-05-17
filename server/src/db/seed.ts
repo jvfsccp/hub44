@@ -47,6 +47,12 @@ type SeedStore = {
 
 const seedPassword = '12345678'
 
+const seedAdmin = {
+  name: 'Hub44 Admin',
+  email: 'admin@seed.hub44.test',
+  phone: '62999999999',
+}
+
 const seedCategories: SeedCategory[] = [
   {
     name: 'Moda Feminina',
@@ -549,6 +555,23 @@ async function main() {
   const categoriesBySlug = new Map<string, { id: string }>()
   let productCount = 0
 
+  await db
+    .insert(users)
+    .values({
+      ...seedAdmin,
+      passwordHash,
+      role: 'admin',
+    })
+    .onConflictDoUpdate({
+      target: users.email,
+      set: {
+        ...seedAdmin,
+        passwordHash,
+        role: 'admin',
+        updatedAt: new Date(),
+      },
+    })
+
   for (const category of seedCategories) {
     const [record] = await db
       .insert(categories)
@@ -657,6 +680,7 @@ async function main() {
   console.info(
     `Seed concluido: ${seedCategories.length} categorias, ${seedStores.length} lojas e ${productCount} produtos.`,
   )
+  console.info(`Usuario admin: ${seedAdmin.email} / senha "${seedPassword}".`)
   console.info(
     `Usuarios lojistas usam senha padrao "${seedPassword}" e emails no dominio seed.hub44.test.`,
   )

@@ -4,6 +4,7 @@ import type {
   StoreStatus,
 } from '@/repositories/stores-repository'
 import { StoresRepository } from '@/repositories/stores-repository'
+import type { UserRole } from '@/repositories/users-repository'
 import type { MultipartImage } from '@/utils/multipart-form'
 import { createSlug } from '@/utils/slug'
 import { uploadStoreImage } from '@/utils/upload-store-image'
@@ -21,6 +22,7 @@ type CreateStoreInput = {
 
 type UploadStoreImageInput = {
   ownerId: string
+  role?: UserRole
   storeId: string
   kind: StoreImageKind
   image: MultipartImage
@@ -88,14 +90,14 @@ export class StoresService {
     })
   }
 
-  async getOwnedStore(storeId: string, ownerId: string) {
+  async getOwnedStore(storeId: string, ownerId: string, role?: UserRole) {
     const store = await this.storesRepository.findById(storeId)
 
     if (!store) {
       throw new StoreNotFoundError()
     }
 
-    if (store.ownerId !== ownerId) {
+    if (role !== 'admin' && store.ownerId !== ownerId) {
       throw new StoreAccessDeniedError()
     }
 
@@ -162,7 +164,7 @@ export class StoresService {
   }
 
   async uploadImage(input: UploadStoreImageInput) {
-    await this.getOwnedStore(input.storeId, input.ownerId)
+    await this.getOwnedStore(input.storeId, input.ownerId, input.role)
 
     const imageUpload = await uploadStoreImage({
       fileBuffer: input.image.buffer,
