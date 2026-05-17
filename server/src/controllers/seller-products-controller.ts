@@ -55,6 +55,7 @@ export class SellerProductsController {
       const products = await this.productsService.listByStore(
         request.user.sub,
         store.id,
+        request.user.role,
       )
 
       return reply.status(200).send({
@@ -70,6 +71,7 @@ export class SellerProductsController {
       const { store } = await this.sellerService.getStore(request.user.sub)
       const product = await this.productsService.create({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: store.id,
         ...request.body,
         status: request.body.status ?? 'draft',
@@ -86,6 +88,7 @@ export class SellerProductsController {
       const { store } = await this.sellerService.getStore(request.user.sub)
       const product = await this.productsService.update({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: store.id,
         productId: request.params.productId,
         ...request.body,
@@ -105,6 +108,7 @@ export class SellerProductsController {
       const { store } = await this.sellerService.getStore(request.user.sub)
       const product = await this.productsService.updateStatus({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: store.id,
         productId: request.params.productId,
         status: request.body.status,
@@ -131,6 +135,7 @@ export class SellerProductsController {
 
       const product = await this.productsService.uploadImage({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: store.id,
         productId: request.params.productId,
         image,

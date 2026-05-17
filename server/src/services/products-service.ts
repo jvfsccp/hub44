@@ -1,6 +1,7 @@
 import { CategoriesRepository } from '@/repositories/categories-repository'
 import type { Product, ProductStatus } from '@/repositories/products-repository'
 import { ProductsRepository } from '@/repositories/products-repository'
+import type { UserRole } from '@/repositories/users-repository'
 import { StoresService } from '@/services/stores-service'
 import { getImageExtension } from '@/utils/image-extension'
 import type { MultipartImage } from '@/utils/multipart-form'
@@ -11,6 +12,7 @@ export type { ProductStatus } from '@/repositories/products-repository'
 
 type CreateProductInput = {
   ownerId: string
+  role?: UserRole
   storeId: string
   categoryId: string
   name: string
@@ -23,6 +25,7 @@ type CreateProductInput = {
 
 type UpdateProductInput = {
   ownerId: string
+  role?: UserRole
   storeId: string
   productId: string
   categoryId?: string
@@ -36,6 +39,7 @@ type UpdateProductInput = {
 
 type UploadProductImageInput = {
   ownerId: string
+  role?: UserRole
   storeId: string
   productId: string
   image: MultipartImage
@@ -73,7 +77,11 @@ export class ProductsService {
   ) {}
 
   async create(input: CreateProductInput) {
-    await this.storesService.getOwnedStore(input.storeId, input.ownerId)
+    await this.storesService.getOwnedStore(
+      input.storeId,
+      input.ownerId,
+      input.role,
+    )
 
     const category = await this.categoriesRepository.findById(input.categoryId)
 
@@ -108,14 +116,18 @@ export class ProductsService {
     })
   }
 
-  async listByStore(ownerId: string, storeId: string) {
-    await this.storesService.getOwnedStore(storeId, ownerId)
+  async listByStore(ownerId: string, storeId: string, role?: UserRole) {
+    await this.storesService.getOwnedStore(storeId, ownerId, role)
 
     return this.productsRepository.listByStoreId(storeId)
   }
 
   async update(input: UpdateProductInput) {
-    await this.storesService.getOwnedStore(input.storeId, input.ownerId)
+    await this.storesService.getOwnedStore(
+      input.storeId,
+      input.ownerId,
+      input.role,
+    )
 
     const product = await this.productsRepository.findByStoreIdAndId(
       input.storeId,
@@ -174,11 +186,16 @@ export class ProductsService {
 
   async updateStatus(input: {
     ownerId: string
+    role?: UserRole
     storeId: string
     productId: string
     status: ProductStatus
   }) {
-    await this.storesService.getOwnedStore(input.storeId, input.ownerId)
+    await this.storesService.getOwnedStore(
+      input.storeId,
+      input.ownerId,
+      input.role,
+    )
 
     const product = await this.productsRepository.findByStoreIdAndId(
       input.storeId,
@@ -202,7 +219,11 @@ export class ProductsService {
   }
 
   async uploadImage(input: UploadProductImageInput) {
-    await this.storesService.getOwnedStore(input.storeId, input.ownerId)
+    await this.storesService.getOwnedStore(
+      input.storeId,
+      input.ownerId,
+      input.role,
+    )
 
     const product = await this.productsRepository.findByStoreIdAndId(
       input.storeId,

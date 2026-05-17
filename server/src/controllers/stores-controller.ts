@@ -78,6 +78,7 @@ export class StoresController {
     try {
       const product = await this.productsService.create({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: request.params.storeId,
         ...request.body,
       })
@@ -112,6 +113,7 @@ export class StoresController {
 
       const product = await this.productsService.uploadImage({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: request.params.storeId,
         productId: request.params.productId,
         image,
@@ -140,6 +142,7 @@ export class StoresController {
 
       const store = await this.storesService.uploadImage({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: request.params.storeId,
         kind,
         image,

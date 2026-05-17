@@ -15,7 +15,7 @@ import {
 import type { AuthTokenPayload } from '@/types/auth'
 import { readMultipartForm } from '@/utils/multipart-form'
 
-const accessTokenMaxAge = '15m'
+const accessTokenMaxAge = '3h'
 
 type AddressBody = {
   street: string
