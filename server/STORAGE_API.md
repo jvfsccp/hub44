@@ -69,7 +69,7 @@ pnpm.cmd run dev
 3. Para lojistas, rode o onboarding de loja.
 4. Crie uma categoria.
 5. Crie os produtos da loja.
-6. Envie logo, banner e a imagem de cada produto.
+6. Envie logo, banner e as imagens de cada produto.
 
 As rotas de categoria, loja, produto e endereco exigem:
 
@@ -87,12 +87,14 @@ store-id/
   logo
   banner
   products/
-    product-id.ext
+    product-id/
+      image-id.ext
 ```
 
 `logo` e `banner` usam caminhos fixos para substituir a imagem anterior com
-`upsert`. Produtos continuam usando extensao no nome do arquivo, conforme o
-tipo enviado.
+`upsert`. Produtos usam uma pasta por produto e um arquivo novo por upload,
+permitindo varias imagens para carrossel. Cada arquivo mantem a extensao
+conforme o tipo enviado.
 
 ## Onboarding de lojista
 
@@ -448,16 +450,18 @@ store-id/banner
 
 3. Salva a URL publica em `stores.logo_url` ou `stores.banner_url`.
 
-Ao enviar a imagem de um produto, a API:
+Ao enviar uma imagem de um produto, a API:
 
 1. Recebe o arquivo no campo `image`.
 2. Envia para o Supabase Storage em:
 
 ```text
-store-id/products/product-id.ext
+store-id/products/product-id/image-id.ext
 ```
 
-3. Salva a URL publica em `products.image_url`.
+3. Salva a URL publica em `product_images.image_url`.
+4. Mantem `products.image_url` como imagem principal para compatibilidade,
+   preenchendo esse campo apenas quando o produto ainda nao tem imagem.
 
 ## Rotas principais
 
@@ -659,6 +663,7 @@ Resposta:
     "priceInCents": 3990,
     "stock": 20,
     "imageUrl": null,
+    "imageUrls": [],
     "status": "active",
     "createdAt": "2026-05-15T11:10:00.000Z",
     "updatedAt": "2026-05-15T11:10:00.000Z"
@@ -682,7 +687,10 @@ Campo:
 | --- | --- | --- |
 | `image` | arquivo imagem | sim |
 
-Depois do upload, a resposta do produto passa a ter `imageUrl` preenchido.
+Depois do upload, a resposta do produto passa a ter `imageUrl` preenchido
+quando ainda nao havia imagem principal, e `imageUrls` passa a listar todas as
+imagens do produto em ordem de envio. Repita o upload para adicionar mais
+imagens ao carrossel.
 
 ## Usando no Postman
 
@@ -758,7 +766,7 @@ Para cadastrar 10 lojas:
 2. Para cada loja, rode `Criar loja`.
 3. Cadastre o endereco da loja.
 4. Cadastre os produtos usando o `storeId` e o `categoryId`.
-5. Envie logo, banner e a imagem de cada produto.
+5. Envie logo, banner e as imagens de cada produto.
 6. Confira no Supabase Storage se as imagens ficaram em:
 
 ```text
@@ -766,7 +774,8 @@ store-id/
   logo
   banner
   products/
-    product-id.ext
+    product-id/
+      image-id.ext
 ```
 
 Modelo de controle para equipe:
