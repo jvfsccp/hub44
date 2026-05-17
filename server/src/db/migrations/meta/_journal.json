@@ -43,6 +43,20 @@
       "when": 1778869160277,
       "tag": "0005_lovely_ben_grimm",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779054787290,
+      "tag": "0006_clumsy_vindicator",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779060989530,
+      "tag": "0007_grey_sleeper",
+      "breakpoints": true
     }
   ]
 }

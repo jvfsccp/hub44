@@ -26,6 +26,8 @@ const storeSchema = z.object({
   description: z.string(),
   cnpj: z.string(),
   phone: z.string(),
+  logoUrl: z.string().nullable(),
+  bannerUrl: z.string().nullable(),
   status: storeStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -40,6 +42,7 @@ const productSchema = z.object({
   priceInCents: z.number().int(),
   stock: z.number().int(),
   imageUrl: z.string().nullable(),
+  imageUrls: z.array(z.string()),
   status: productStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -74,6 +77,58 @@ export const storesRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     controller.create,
+  )
+
+  app.post(
+    '/stores/:storeId/logo',
+    {
+      preHandler: [authenticate],
+      schema: {
+        summary: 'Upload a store logo',
+        description:
+          'Send as multipart/form-data with a single image file field named image.',
+        tags: ['Stores'],
+        params: z.object({
+          storeId: z.string().min(1),
+        }),
+        response: {
+          200: z.object({ store: storeSchema }),
+          400: messageSchema,
+          401: messageSchema,
+          403: messageSchema,
+          404: messageSchema,
+          413: messageSchema,
+          500: messageSchema,
+        },
+      },
+    },
+    controller.uploadLogo,
+  )
+
+  app.post(
+    '/stores/:storeId/banner',
+    {
+      preHandler: [authenticate],
+      schema: {
+        summary: 'Upload a store banner',
+        description:
+          'Send as multipart/form-data with a single image file field named image.',
+        tags: ['Stores'],
+        params: z.object({
+          storeId: z.string().min(1),
+        }),
+        response: {
+          200: z.object({ store: storeSchema }),
+          400: messageSchema,
+          401: messageSchema,
+          403: messageSchema,
+          404: messageSchema,
+          413: messageSchema,
+          500: messageSchema,
+        },
+      },
+    },
+    controller.uploadBanner,
   )
 
   app.post(

@@ -1,0 +1,27 @@
+meta {
+  name: 06 - Upload logo da loja
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/stores/{{storeId}}/logo
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+body:multipart-form {
+  image: @file(./logo.jpg)
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:3333
+}
+
+docs {
+  Antes de enviar, selecione uma imagem real no campo image. O arquivo sera enviado para store-id/logo.
+}

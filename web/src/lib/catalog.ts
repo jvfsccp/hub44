@@ -17,6 +17,8 @@ export type Store = {
   description: string
   cnpj: string
   phone: string
+  logoUrl: string | null
+  bannerUrl: string | null
   status: 'pending' | 'approved' | 'rejected' | 'inactive'
   createdAt: string
   updatedAt: string
@@ -35,6 +37,7 @@ export type Product = {
   priceInCents: number
   stock: number
   imageUrl: string | null
+  imageUrls: string[]
   status: 'draft' | 'active' | 'paused' | 'inactive' | 'out_of_stock'
   createdAt: string
   updatedAt: string

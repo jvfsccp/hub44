@@ -24,6 +24,8 @@ const stores = pgTable(
     description: text('description').notNull(),
     cnpj: text('cnpj').notNull().unique(),
     phone: text('phone').notNull(),
+    logoUrl: text('logo_url'),
+    bannerUrl: text('banner_url'),
     status: storeStatuses('status').notNull().default('pending'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

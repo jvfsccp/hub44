@@ -50,7 +50,13 @@ SUPABASE_STORAGE_BUCKET=stores
 pnpm.cmd run db:migrate
 ```
 
-5. Suba a API:
+5. Opcionalmente, rode os seeds de categorias, lojas, enderecos e produtos:
+
+```bash
+pnpm.cmd run db:seed
+```
+
+6. Suba a API:
 
 ```bash
 pnpm.cmd run dev
@@ -63,13 +69,32 @@ pnpm.cmd run dev
 3. Para lojistas, rode o onboarding de loja.
 4. Crie uma categoria.
 5. Crie os produtos da loja.
-6. Envie a imagem de cada produto.
+6. Envie logo, banner e as imagens de cada produto.
 
 As rotas de categoria, loja, produto e endereco exigem:
 
 ```http
 Authorization: Bearer ACCESS_TOKEN
 ```
+
+## Estrutura do Storage
+
+Os arquivos ficam no bucket configurado em `SUPABASE_STORAGE_BUCKET`, agrupados
+pelo id da loja:
+
+```text
+store-id/
+  logo
+  banner
+  products/
+    product-id/
+      image-id.ext
+```
+
+`logo` e `banner` usam caminhos fixos para substituir a imagem anterior com
+`upsert`. Produtos usam uma pasta por produto e um arquivo novo por upload,
+permitindo varias imagens para carrossel. Cada arquivo mantem a extensao
+conforme o tipo enviado.
 
 ## Onboarding de lojista
 
@@ -116,6 +141,8 @@ Rotas auxiliares para o painel do lojista:
 ```http
 GET /seller/store
 PATCH /seller/store
+POST /seller/store/logo
+POST /seller/store/banner
 GET /seller/products
 POST /seller/products
 PATCH /seller/products/:productId
@@ -411,16 +438,30 @@ Ao criar um produto, a API:
    body.
 5. Salva o produto com status inicial `active`.
 
-Ao enviar a imagem de um produto, a API:
+Ao enviar logo ou banner da loja, a API:
 
 1. Recebe o arquivo no campo `image`.
 2. Envia para o Supabase Storage em:
 
 ```text
-store-id/products/product-id.ext
+store-id/logo
+store-id/banner
 ```
 
-3. Salva a URL publica em `products.image_url`.
+3. Salva a URL publica em `stores.logo_url` ou `stores.banner_url`.
+
+Ao enviar uma imagem de um produto, a API:
+
+1. Recebe o arquivo no campo `image`.
+2. Envia para o Supabase Storage em:
+
+```text
+store-id/products/product-id/image-id.ext
+```
+
+3. Salva a URL publica em `product_images.image_url`.
+4. Mantem `products.image_url` como imagem principal para compatibilidade,
+   preenchendo esse campo apenas quando o produto ainda nao tem imagem.
 
 ## Rotas principais
 
@@ -507,6 +548,8 @@ Resposta:
     "description": "Cafeteria com produtos artesanais",
     "cnpj": "12345678000190",
     "phone": "62999999999",
+    "logoUrl": null,
+    "bannerUrl": null,
     "status": "pending",
     "createdAt": "2026-05-15T11:05:00.000Z",
     "updatedAt": "2026-05-15T11:05:00.000Z"
@@ -515,6 +558,54 @@ Resposta:
 ```
 
 Guarde o `store.id`.
+
+### Upload do logo da loja
+
+```http
+POST /stores/:storeId/logo
+Content-Type: multipart/form-data
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Para o painel do lojista autenticado, tambem existe:
+
+```http
+POST /seller/store/logo
+Content-Type: multipart/form-data
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Campo:
+
+| Campo | Tipo | Obrigatorio |
+| --- | --- | --- |
+| `image` | arquivo imagem | sim |
+
+Depois do upload, a resposta da loja passa a ter `logoUrl` preenchido.
+
+### Upload do banner da loja
+
+```http
+POST /stores/:storeId/banner
+Content-Type: multipart/form-data
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Para o painel do lojista autenticado, tambem existe:
+
+```http
+POST /seller/store/banner
+Content-Type: multipart/form-data
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Campo:
+
+| Campo | Tipo | Obrigatorio |
+| --- | --- | --- |
+| `image` | arquivo imagem | sim |
+
+Depois do upload, a resposta da loja passa a ter `bannerUrl` preenchido.
 
 ### Criar endereco da loja
 
@@ -572,6 +663,7 @@ Resposta:
     "priceInCents": 3990,
     "stock": 20,
     "imageUrl": null,
+    "imageUrls": [],
     "status": "active",
     "createdAt": "2026-05-15T11:10:00.000Z",
     "updatedAt": "2026-05-15T11:10:00.000Z"
@@ -595,7 +687,10 @@ Campo:
 | --- | --- | --- |
 | `image` | arquivo imagem | sim |
 
-Depois do upload, a resposta do produto passa a ter `imageUrl` preenchido.
+Depois do upload, a resposta do produto passa a ter `imageUrl` preenchido
+quando ainda nao havia imagem principal, e `imageUrls` passa a listar todas as
+imagens do produto em ordem de envio. Repita o upload para adicionar mais
+imagens ao carrossel.
 
 ## Usando no Postman
 
@@ -615,9 +710,11 @@ server/api-clients/postman/hub44-storage.postman_collection.json
 | 01 | `Login` |
 | 02 | `Criar categoria` |
 | 03 | `Criar loja` |
-| 04 | `Criar endereco da loja` |
-| 05 | `Criar produto` |
-| 06 | `Upload imagem do produto` |
+| 04 | `Upload logo da loja` |
+| 05 | `Upload banner da loja` |
+| 06 | `Criar endereco da loja` |
+| 07 | `Criar produto` |
+| 08 | `Upload imagem do produto` |
 
 O Postman salva automaticamente `accessToken`, `categoryId`, `storeId` e
 `productId` nas variaveis da collection.
@@ -641,7 +738,25 @@ server/api-clients/bruno/hub44-storage-api
 8. Execute `03 - Criar loja` e copie `store.id` para `storeId`.
 9. Execute `04 - Criar endereco da loja`.
 10. Execute `05 - Criar produto` e copie `product.id` para `productId`.
-11. Execute `06 - Upload imagem do produto` selecionando uma imagem real.
+11. Execute `06 - Upload logo da loja` selecionando uma imagem real.
+12. Execute `07 - Upload banner da loja` selecionando uma imagem real.
+13. Execute `08 - Upload imagem do produto` selecionando uma imagem real.
+
+## Seeds
+
+O seed atual cria:
+
+- 10 categorias;
+- 10 lojas aprovadas, cada uma com usuario lojista;
+- 10 enderecos de loja;
+- 30 produtos ativos.
+
+As imagens ficam vazias no seed e devem ser enviadas depois pelas rotas de
+upload. Para rodar:
+
+```bash
+pnpm.cmd run db:seed
+```
 
 ## Alimentando 10 lojas
 
@@ -651,13 +766,16 @@ Para cadastrar 10 lojas:
 2. Para cada loja, rode `Criar loja`.
 3. Cadastre o endereco da loja.
 4. Cadastre os produtos usando o `storeId` e o `categoryId`.
-5. Envie a imagem de cada produto.
+5. Envie logo, banner e as imagens de cada produto.
 6. Confira no Supabase Storage se as imagens ficaram em:
 
 ```text
 store-id/
+  logo
+  banner
   products/
-    product-id.ext
+    product-id/
+      image-id.ext
 ```
 
 Modelo de controle para equipe:

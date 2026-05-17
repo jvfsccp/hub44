@@ -188,6 +188,7 @@ export function MarketplaceProdutosPage() {
               >
                 <img
                   src={
+                    product.imageUrls[0] ??
                     product.imageUrl ??
                     fallbackProductImages[index % fallbackProductImages.length]
                   }

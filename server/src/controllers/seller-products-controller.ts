@@ -4,7 +4,6 @@ import { handleProductError } from '@/controllers/stores-controller'
 import {
   type ProductStatus,
   ProductsService,
-  toProductResponse,
 } from '@/services/products-service'
 import { SellerService } from '@/services/seller-service'
 import { readMultipartForm } from '@/utils/multipart-form'
@@ -55,10 +54,11 @@ export class SellerProductsController {
       const products = await this.productsService.listByStore(
         request.user.sub,
         store.id,
+        request.user.role,
       )
 
       return reply.status(200).send({
-        products: products.map(toProductResponse),
+        products: await this.productsService.toResponses(products),
       })
     } catch (error) {
       return handleProductError(error, reply)
@@ -70,12 +70,15 @@ export class SellerProductsController {
       const { store } = await this.sellerService.getStore(request.user.sub)
       const product = await this.productsService.create({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: store.id,
         ...request.body,
         status: request.body.status ?? 'draft',
       })
 
-      return reply.status(201).send({ product: toProductResponse(product) })
+      return reply
+        .status(201)
+        .send({ product: await this.productsService.toResponse(product) })
     } catch (error) {
       return handleProductError(error, reply)
     }
@@ -86,12 +89,15 @@ export class SellerProductsController {
       const { store } = await this.sellerService.getStore(request.user.sub)
       const product = await this.productsService.update({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: store.id,
         productId: request.params.productId,
         ...request.body,
       })
 
-      return reply.status(200).send({ product: toProductResponse(product) })
+      return reply
+        .status(200)
+        .send({ product: await this.productsService.toResponse(product) })
     } catch (error) {
       return handleProductError(error, reply)
     }
@@ -105,12 +111,15 @@ export class SellerProductsController {
       const { store } = await this.sellerService.getStore(request.user.sub)
       const product = await this.productsService.updateStatus({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: store.id,
         productId: request.params.productId,
         status: request.body.status,
       })
 
-      return reply.status(200).send({ product: toProductResponse(product) })
+      return reply
+        .status(200)
+        .send({ product: await this.productsService.toResponse(product) })
     } catch (error) {
       return handleProductError(error, reply)
     }
@@ -131,12 +140,15 @@ export class SellerProductsController {
 
       const product = await this.productsService.uploadImage({
         ownerId: request.user.sub,
+        role: request.user.role,
         storeId: store.id,
         productId: request.params.productId,
         image,
       })
 
-      return reply.status(200).send({ product: toProductResponse(product) })
+      return reply
+        .status(200)
+        .send({ product: await this.productsService.toResponse(product) })
     } catch (error) {
       return handleProductError(error, reply)
     }

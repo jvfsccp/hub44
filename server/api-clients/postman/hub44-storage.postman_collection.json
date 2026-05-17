@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "d0f7b3b0-52a5-4b9c-a870-4f6a2a7f79b1",
     "name": "Hub44 Storage API",
-    "description": "Fluxo para cadastrar categorias, lojas, enderecos e produtos. Dados usam JSON; upload de imagem usa multipart/form-data.",
+    "description": "Fluxo para cadastrar categorias, lojas, enderecos e produtos. Dados usam JSON; uploads de logo, banner e produto usam multipart/form-data.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -30,8 +30,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
             },
             "description": "Use apenas se ainda nao existir usuario para testar."
           },
@@ -77,8 +82,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "Salva accessToken automaticamente nas variaveis da collection."
           },
@@ -133,8 +143,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/categories",
-              "host": ["{{baseUrl}}"],
-              "path": ["categories"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
             }
           },
           "response": []
@@ -183,14 +197,88 @@
             },
             "url": {
               "raw": "{{baseUrl}}/stores",
-              "host": ["{{baseUrl}}"],
-              "path": ["stores"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stores"
+              ]
             }
           },
           "response": []
         },
         {
-          "name": "04 - Criar endereco da loja",
+          "name": "04 - Upload logo da loja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stores/{{storeId}}/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stores",
+                "{{storeId}}",
+                "logo"
+              ]
+            },
+            "description": "Selecione uma imagem real no campo image antes de enviar. O arquivo sera enviado para store-id/logo."
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Upload banner da loja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stores/{{storeId}}/banner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stores",
+                "{{storeId}}",
+                "banner"
+              ]
+            },
+            "description": "Selecione uma imagem real no campo image antes de enviar. O arquivo sera enviado para store-id/banner."
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Criar endereco da loja",
           "request": {
             "method": "POST",
             "header": [
@@ -214,14 +302,20 @@
             },
             "url": {
               "raw": "{{baseUrl}}/stores/{{storeId}}/addresses",
-              "host": ["{{baseUrl}}"],
-              "path": ["stores", "{{storeId}}", "addresses"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stores",
+                "{{storeId}}",
+                "addresses"
+              ]
             }
           },
           "response": []
         },
         {
-          "name": "05 - Criar produto",
+          "name": "07 - Criar produto",
           "event": [
             {
               "listen": "test",
@@ -264,14 +358,20 @@
             },
             "url": {
               "raw": "{{baseUrl}}/stores/{{storeId}}/products",
-              "host": ["{{baseUrl}}"],
-              "path": ["stores", "{{storeId}}", "products"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stores",
+                "{{storeId}}",
+                "products"
+              ]
             }
           },
           "response": []
         },
         {
-          "name": "06 - Upload imagem do produto",
+          "name": "08 - Upload imagem do produto",
           "request": {
             "method": "POST",
             "header": [
@@ -292,7 +392,9 @@
             },
             "url": {
               "raw": "{{baseUrl}}/stores/{{storeId}}/products/{{productId}}/image",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "stores",
                 "{{storeId}}",

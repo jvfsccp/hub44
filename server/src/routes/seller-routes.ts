@@ -28,6 +28,8 @@ const storeSchema = z.object({
   description: z.string(),
   cnpj: z.string(),
   phone: z.string(),
+  logoUrl: z.string().nullable(),
+  bannerUrl: z.string().nullable(),
   status: storeStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -49,6 +51,7 @@ const productSchema = z.object({
   priceInCents: z.number().int(),
   stock: z.number().int(),
   imageUrl: z.string().nullable(),
+  imageUrls: z.array(z.string()),
   status: productStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -186,6 +189,52 @@ export const sellerRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     controller.updateStore,
+  )
+
+  app.post(
+    '/seller/store/logo',
+    {
+      preHandler: [authenticate, authorizeRoles('seller', 'admin')],
+      schema: {
+        summary: 'Upload authenticated seller store logo',
+        description:
+          'Send as multipart/form-data with a single image file field named image.',
+        tags: ['Seller'],
+        response: {
+          200: z.object({ store: storeSchema }),
+          400: messageSchema,
+          401: messageSchema,
+          403: messageSchema,
+          404: messageSchema,
+          413: messageSchema,
+          500: messageSchema,
+        },
+      },
+    },
+    controller.uploadStoreLogo,
+  )
+
+  app.post(
+    '/seller/store/banner',
+    {
+      preHandler: [authenticate, authorizeRoles('seller', 'admin')],
+      schema: {
+        summary: 'Upload authenticated seller store banner',
+        description:
+          'Send as multipart/form-data with a single image file field named image.',
+        tags: ['Seller'],
+        response: {
+          200: z.object({ store: storeSchema }),
+          400: messageSchema,
+          401: messageSchema,
+          403: messageSchema,
+          404: messageSchema,
+          413: messageSchema,
+          500: messageSchema,
+        },
+      },
+    },
+    controller.uploadStoreBanner,
   )
 
   app.get(

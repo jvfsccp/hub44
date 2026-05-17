@@ -1,0 +1,27 @@
+meta {
+  name: 07 - Upload banner da loja
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/stores/{{storeId}}/banner
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+body:multipart-form {
+  image: @file(./banner.jpg)
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:3333
+}
+
+docs {
+  Antes de enviar, selecione uma imagem real no campo image. O arquivo sera enviado para store-id/banner.
+}

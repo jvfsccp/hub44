@@ -5,9 +5,11 @@ import { UsersRepository } from '@/repositories/users-repository'
 import { UserNotFoundError } from '@/services/auth-service'
 import {
   StoreAlreadyExistsError,
+  type StoreImageKind,
   StoreNotFoundError,
   StoresService,
 } from '@/services/stores-service'
+import type { MultipartImage } from '@/utils/multipart-form'
 
 type AddressInput = {
   street: string
@@ -111,6 +113,25 @@ export class SellerService {
     const addresses = await this.addressesRepository.findByStoreId(store.id)
 
     return { store, addresses }
+  }
+
+  async uploadStoreImage(
+    ownerId: string,
+    kind: StoreImageKind,
+    image: MultipartImage,
+  ) {
+    const current = await this.storesService.getByOwnerId(ownerId)
+
+    if (!current) {
+      throw new StoreNotFoundError()
+    }
+
+    return this.storesService.uploadImage({
+      ownerId,
+      storeId: current.id,
+      kind,
+      image,
+    })
   }
 }
 
