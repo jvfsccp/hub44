@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import productSneakerImage from '@/assets/stitch/product-sneaker.png'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ApiError, getAccessToken } from '@/lib/api'
 import { addCartItem, cartQueryKeys } from '@/lib/cart'
 import { catalogQueryKeys, listProducts } from '@/lib/catalog'
+import { getProductImageUrls } from '@/lib/product-images'
 
 const currency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -33,15 +34,7 @@ export function ProdutoDetalhePage() {
     [params.productId, productsQuery.data?.products],
   )
   const productImages = useMemo(() => {
-    if (!product) {
-      return [productSneakerImage]
-    }
-
-    if (product.imageUrls.length > 0) {
-      return product.imageUrls
-    }
-
-    return product.imageUrl ? [product.imageUrl] : [productSneakerImage]
+    return getProductImageUrls(product, productSneakerImage)
   }, [product])
   const activeImage = productImages[activeImageIndex] ?? productImages[0]
   const addToCartMutation = useMutation({
@@ -77,10 +70,6 @@ export function ProdutoDetalhePage() {
       )
     }
   }
-
-  useEffect(() => {
-    setActiveImageIndex(0)
-  }, [params.productId])
 
   if (productsQuery.isLoading) {
     return (
@@ -153,7 +142,7 @@ export function ProdutoDetalhePage() {
               <div className="grid grid-cols-4 gap-3">
                 {productImages.map((imageUrl, index) => (
                   <button
-                    key={`${imageUrl}-${index}`}
+                    key={imageUrl}
                     type="button"
                     className={`aspect-square overflow-hidden rounded-xl border-2 bg-surface-alt transition ${
                       activeImageIndex === index

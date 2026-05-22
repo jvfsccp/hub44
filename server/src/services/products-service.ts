@@ -1,3 +1,4 @@
+import { uuidv7 } from 'uuidv7'
 import { CategoriesRepository } from '@/repositories/categories-repository'
 import type { Product, ProductStatus } from '@/repositories/products-repository'
 import { ProductsRepository } from '@/repositories/products-repository'
@@ -5,9 +6,9 @@ import type { UserRole } from '@/repositories/users-repository'
 import { StoresService } from '@/services/stores-service'
 import { getImageExtension } from '@/utils/image-extension'
 import type { MultipartImage } from '@/utils/multipart-form'
+import { buildProductImageUrls } from '@/utils/product-images'
 import { createSlug } from '@/utils/slug'
 import { uploadStoreImage } from '@/utils/upload-store-image'
-import { uuidv7 } from 'uuidv7'
 
 export type { ProductStatus } from '@/repositories/products-repository'
 
@@ -303,12 +304,10 @@ export class ProductsService {
 }
 
 export function toProductResponse(product: Product, imageUrls: string[] = []) {
-  const responseImageUrls =
-    imageUrls.length > 0
-      ? imageUrls
-      : product.imageUrl
-        ? [product.imageUrl]
-        : []
+  const responseImageUrls = buildProductImageUrls({
+    imageUrl: product.imageUrl,
+    imageUrls,
+  })
 
   return {
     id: product.id,
