@@ -7,6 +7,7 @@
     "dev": "tsx watch --env-file=.env src/server.ts",
     "dev:docker": "tsx watch src/server.ts",
     "start": "node dist/server.js",
+    "test": "node --import tsx --import ./tests/setup-env.ts --test tests/cart-service.test.ts tests/categories-service.test.ts tests/image-extension.test.ts tests/notifications-service.test.ts tests/payments-service.test.ts tests/product-images.test.ts tests/slug.test.ts",
     "format": "biome format --write",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

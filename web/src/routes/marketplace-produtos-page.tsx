@@ -18,6 +18,7 @@ import {
   listProducts,
   listStores,
 } from '@/lib/catalog'
+import { getProductImageUrls } from '@/lib/product-images'
 
 const fallbackProductImages = [
   productDressImage,
@@ -188,9 +189,12 @@ export function MarketplaceProdutosPage() {
               >
                 <img
                   src={
-                    product.imageUrls[0] ??
-                    product.imageUrl ??
-                    fallbackProductImages[index % fallbackProductImages.length]
+                    getProductImageUrls(
+                      product,
+                      fallbackProductImages[
+                        index % fallbackProductImages.length
+                      ],
+                    )[0]
                   }
                   alt={product.name}
                   className="size-full object-cover transition duration-500 group-hover:scale-105"

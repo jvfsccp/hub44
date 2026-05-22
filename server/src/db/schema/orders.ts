@@ -29,11 +29,7 @@ export const paymentStatuses = pgEnum('payment_status', [
   'refunded',
 ])
 
-export const paymentMethods = pgEnum('payment_method', [
-  'card',
-  'pix',
-  'boleto',
-])
+export const paymentMethods = pgEnum('payment_method', ['card', 'pix'])
 
 const orders = pgTable(
   'orders',

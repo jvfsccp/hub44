@@ -41,4 +41,45 @@ export const notificationsRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     controller.list,
   )
+
+  app.patch(
+    '/notifications/:notificationId/read',
+    {
+      preHandler: [authenticate],
+      schema: {
+        summary: 'Mark a notification as read',
+        tags: ['Notifications'],
+        params: z.object({
+          notificationId: z.string().min(1),
+        }),
+        response: {
+          200: z.object({ notification: notificationSchema }),
+          401: messageSchema,
+          404: messageSchema,
+          500: messageSchema,
+        },
+      },
+    },
+    controller.markAsRead,
+  )
+
+  app.patch(
+    '/notifications/read',
+    {
+      preHandler: [authenticate],
+      schema: {
+        summary: 'Mark all authenticated user notifications as read',
+        tags: ['Notifications'],
+        response: {
+          200: z.object({
+            updatedCount: z.number().int(),
+            notifications: z.array(notificationSchema),
+          }),
+          401: messageSchema,
+          500: messageSchema,
+        },
+      },
+    },
+    controller.markAllAsRead,
+  )
 }

@@ -1,12 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ChevronDown, LogOut, Search, ShoppingCart } from 'lucide-react'
+import {
+  Bell,
+  CheckCheck,
+  ChevronDown,
+  LogOut,
+  Search,
+  ShoppingCart,
+} from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { getAccessToken } from '@/lib/api'
 import { getCurrentUserWithRefresh, logout } from '@/lib/auth'
 import { cartQueryKeys, getCart } from '@/lib/cart'
+import {
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  notificationQueryKeys,
+} from '@/lib/notifications'
 
 type MarketplaceHeaderProps = {
   active: 'home' | 'stores' | 'products'
@@ -26,6 +39,7 @@ export function MarketplaceHeader({
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const hasToken = Boolean(getAccessToken())
 
   const currentUserQuery = useQuery({
@@ -38,18 +52,60 @@ export function MarketplaceHeader({
     queryFn: () => getCart(),
     enabled: hasToken,
   })
+  const notificationsQuery = useQuery({
+    queryKey: notificationQueryKeys.all,
+    queryFn: listNotifications,
+    enabled: hasToken,
+    refetchInterval: 15_000,
+  })
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSettled: () => {
       queryClient.removeQueries({ queryKey: ['auth'] })
       queryClient.removeQueries({ queryKey: cartQueryKeys.all })
+      queryClient.removeQueries({ queryKey: notificationQueryKeys.all })
       navigate({ to: '/login' })
+    },
+  })
+  const markNotificationReadMutation = useMutation({
+    mutationFn: markNotificationRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificationQueryKeys.all })
+    },
+  })
+  const markAllNotificationsReadMutation = useMutation({
+    mutationFn: markAllNotificationsRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificationQueryKeys.all })
     },
   })
 
   const user = currentUserQuery.data?.user ?? null
   const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() ?? 'H'
   const cartCount = cartQuery.data?.summary.itemsCount ?? 0
+  const notifications = notificationsQuery.data?.notifications ?? []
+  const unreadCount = notifications.filter(
+    (notification) => !notification.readAt,
+  ).length
+
+  function openNotification(notificationId: string, orderId: string | null) {
+    markNotificationReadMutation.mutate(notificationId)
+    setNotificationsOpen(false)
+
+    if (!orderId) {
+      return
+    }
+
+    if (user?.role === 'seller') {
+      navigate({ to: '/lojista/pedidos' })
+      return
+    }
+
+    navigate({
+      to: '/cliente/pedidos/$pedidoId',
+      params: { pedidoId: orderId },
+    })
+  }
 
   return (
     <header
@@ -111,6 +167,90 @@ export function MarketplaceHeader({
             ) : null}
           </Button>
 
+          {hasToken ? (
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Notificacoes"
+                className="relative"
+                onClick={() => {
+                  setNotificationsOpen((value) => !value)
+                  setUserMenuOpen(false)
+                }}
+              >
+                <Bell className="size-5" />
+                {unreadCount > 0 ? (
+                  <span className="-top-1 -right-1 absolute grid size-5 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-foreground">
+                    {unreadCount}
+                  </span>
+                ) : null}
+              </Button>
+
+              {notificationsOpen ? (
+                <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-border/70 bg-white p-3 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.45)]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Notificacoes
+                      </p>
+                      <p className="text-xs text-foreground-subtle">
+                        {unreadCount} nao lida(s)
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-8"
+                      disabled={
+                        unreadCount === 0 ||
+                        markAllNotificationsReadMutation.isPending
+                      }
+                      onClick={() => markAllNotificationsReadMutation.mutate()}
+                    >
+                      <CheckCheck className="size-4" />
+                      Limpar
+                    </Button>
+                  </div>
+
+                  <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="rounded-xl bg-surface-alt px-3 py-4 text-center text-sm text-foreground-subtle">
+                        Nenhuma notificacao por enquanto.
+                      </div>
+                    ) : (
+                      notifications.slice(0, 8).map((notification) => (
+                        <button
+                          key={notification.id}
+                          type="button"
+                          className={`w-full rounded-xl px-3 py-2 text-left transition hover:bg-primary/10 ${
+                            notification.readAt
+                              ? 'bg-surface-alt/70'
+                              : 'bg-primary/10'
+                          }`}
+                          onClick={() =>
+                            openNotification(
+                              notification.id,
+                              notification.orderId,
+                            )
+                          }
+                        >
+                          <p className="text-sm font-semibold text-foreground">
+                            {notification.title}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-xs text-foreground-subtle">
+                            {notification.message}
+                          </p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="relative">
             <Button
               type="button"
@@ -122,6 +262,7 @@ export function MarketplaceHeader({
                   return
                 }
 
+                setNotificationsOpen(false)
                 setUserMenuOpen((value) => !value)
               }}
             >
