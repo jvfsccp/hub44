@@ -3,6 +3,7 @@ import { ProductsRepository } from '@/repositories/products-repository'
 import { StoresRepository } from '@/repositories/stores-repository'
 import { toCategoryResponse } from '@/services/categories-service'
 import { toStoreResponse } from '@/services/stores-service'
+import { buildProductImageUrls } from '@/utils/product-images'
 
 export class CatalogService {
   constructor(
@@ -38,9 +39,10 @@ export class CatalogService {
     }
 
     return products.map((product) => {
-      const imageUrls =
-        imageUrlsByProductId.get(product.id) ??
-        (product.imageUrl ? [product.imageUrl] : [])
+      const imageUrls = buildProductImageUrls({
+        imageUrl: product.imageUrl,
+        imageUrls: imageUrlsByProductId.get(product.id),
+      })
 
       return {
         id: product.id,

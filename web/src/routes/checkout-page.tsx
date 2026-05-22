@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { CreditCard, MapPin, ReceiptText, Truck } from 'lucide-react'
+import { CreditCard, MapPin, QrCode, ReceiptText, Truck } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +23,7 @@ import {
 import { ApiError, getAccessToken } from '@/lib/api'
 import { cartQueryKeys, getCart } from '@/lib/cart'
 import { createOrderFromCart, type PaymentMethod } from '@/lib/orders'
+import { normalizePaymentDetails, validatePaymentDetails } from '@/lib/payments'
 
 const currency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -32,7 +33,6 @@ const currency = new Intl.NumberFormat('pt-BR', {
 const paymentOptions: Array<{ id: PaymentMethod; label: string }> = [
   { id: 'card', label: 'Cartao de credito' },
   { id: 'pix', label: 'PIX' },
-  { id: 'boleto', label: 'Boleto' },
 ]
 
 export function CheckoutPage() {
@@ -41,6 +41,18 @@ export function CheckoutPage() {
   const hasToken = Boolean(getAccessToken())
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [cardPayment, setCardPayment] = useState({
+    cardHolderName: '',
+    cardNumber: '',
+    expirationMonth: '',
+    expirationYear: '',
+    cvv: '',
+    installments: 1,
+  })
+  const [pixPayment, setPixPayment] = useState({
+    payerName: '',
+    payerDocument: '',
+  })
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null)
   const [couponFeedback, setCouponFeedback] = useState<string | null>(null)
@@ -182,10 +194,22 @@ export function CheckoutPage() {
       return
     }
 
+    const paymentDetails = normalizePaymentDetails(paymentMethod, {
+      card: cardPayment,
+      pix: pixPayment,
+    })
+    const paymentError = validatePaymentDetails(paymentMethod, paymentDetails)
+
+    if (paymentError) {
+      setFeedback(paymentError)
+      return
+    }
+
     setFeedback(null)
     createOrderMutation.mutate({
       addressId: selectedAddress.id,
       paymentMethod,
+      paymentDetails,
       deliveryMethod: 'standard',
       couponCode: appliedCoupon,
     })
@@ -423,24 +447,120 @@ export function CheckoutPage() {
                       className="h-10 w-full justify-start"
                       onClick={() => setPaymentMethod(method.id)}
                     >
-                      <CreditCard className="size-4" />
+                      {method.id === 'card' ? (
+                        <CreditCard className="size-4" />
+                      ) : (
+                        <QrCode className="size-4" />
+                      )}
                       {method.label}
                     </Button>
+
+                    {paymentMethod === 'card' && method.id === 'card' ? (
+                      <div className="grid gap-2 rounded-xl bg-surface-alt/60 p-3 text-sm">
+                        <Input
+                          placeholder="Nome impresso no cartao"
+                          value={cardPayment.cardHolderName}
+                          onChange={(event) =>
+                            setCardPayment((current) => ({
+                              ...current,
+                              cardHolderName: event.target.value,
+                            }))
+                          }
+                        />
+                        <Input
+                          inputMode="numeric"
+                          placeholder="Numero do cartao"
+                          value={cardPayment.cardNumber}
+                          onChange={(event) =>
+                            setCardPayment((current) => ({
+                              ...current,
+                              cardNumber: event.target.value,
+                            }))
+                          }
+                        />
+                        <div className="grid grid-cols-3 gap-2">
+                          <Input
+                            inputMode="numeric"
+                            placeholder="Mes"
+                            value={cardPayment.expirationMonth}
+                            onChange={(event) =>
+                              setCardPayment((current) => ({
+                                ...current,
+                                expirationMonth: event.target.value,
+                              }))
+                            }
+                          />
+                          <Input
+                            inputMode="numeric"
+                            placeholder="Ano"
+                            value={cardPayment.expirationYear}
+                            onChange={(event) =>
+                              setCardPayment((current) => ({
+                                ...current,
+                                expirationYear: event.target.value,
+                              }))
+                            }
+                          />
+                          <Input
+                            inputMode="numeric"
+                            placeholder="CVV"
+                            value={cardPayment.cvv}
+                            onChange={(event) =>
+                              setCardPayment((current) => ({
+                                ...current,
+                                cvv: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <Input
+                          inputMode="numeric"
+                          min={1}
+                          max={12}
+                          type="number"
+                          placeholder="Parcelas"
+                          value={cardPayment.installments}
+                          onChange={(event) =>
+                            setCardPayment((current) => ({
+                              ...current,
+                              installments: Number(event.target.value) || 1,
+                            }))
+                          }
+                        />
+                      </div>
+                    ) : null}
 
                     {paymentMethod === 'pix' && method.id === 'pix' ? (
                       <div className="rounded-xl bg-surface-alt/60 p-3 text-sm">
                         <div className="mb-2 grid h-28 w-28 place-items-center rounded-lg bg-surface text-xs text-foreground-subtle">
                           QR Code
                         </div>
+                        <div className="grid gap-2">
+                          <Input
+                            placeholder="Nome do pagador"
+                            value={pixPayment.payerName}
+                            onChange={(event) =>
+                              setPixPayment((current) => ({
+                                ...current,
+                                payerName: event.target.value,
+                              }))
+                            }
+                          />
+                          <Input
+                            inputMode="numeric"
+                            placeholder="CPF ou CNPJ"
+                            value={pixPayment.payerDocument}
+                            onChange={(event) =>
+                              setPixPayment((current) => ({
+                                ...current,
+                                payerDocument: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
                         <p className="text-foreground-subtle">
                           Pagamento aprovado em poucos minutos.
                         </p>
-                      </div>
-                    ) : null}
-
-                    {paymentMethod === 'boleto' && method.id === 'boleto' ? (
-                      <div className="rounded-xl bg-surface-alt/60 p-3 text-sm text-foreground-subtle">
-                        Boleto com vencimento em 2 dias.
                       </div>
                     ) : null}
                   </div>

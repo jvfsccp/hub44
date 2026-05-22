@@ -51,7 +51,6 @@ const paymentLabels: Record<PaymentStatus, string> = {
 const paymentMethodLabels: Record<PaymentMethod, string> = {
   card: 'CARTAO DE CREDITO',
   pix: 'PIX',
-  boleto: 'BOLETO',
 }
 
 const statusFilters = [

@@ -5,11 +5,15 @@ import {
   type OrderItem,
   type OrderStatus,
   OrdersRepository,
-  type PaymentMethod,
 } from '@/repositories/orders-repository'
 import type { ProductStatus } from '@/repositories/products-repository'
 import { ProductsRepository } from '@/repositories/products-repository'
 import { KafkaEventsService } from '@/services/kafka-events-service'
+import {
+  type PaymentDetails,
+  PaymentsService,
+  type SupportedPaymentMethod,
+} from '@/services/payments-service'
 import {
   StoreAccessDeniedError,
   StoresService,
@@ -18,7 +22,8 @@ import {
 type CreateOrderInput = {
   customerId: string
   addressId?: string | null
-  paymentMethod: PaymentMethod
+  paymentMethod: SupportedPaymentMethod
+  paymentDetails?: PaymentDetails
   deliveryMethod?: string
   couponCode?: string | null
   items: Array<{
@@ -66,6 +71,7 @@ export class OrdersService {
     private readonly notificationsRepository = new NotificationsRepository(),
     private readonly storesService = new StoresService(),
     private readonly kafkaEventsService = new KafkaEventsService(),
+    private readonly paymentsService = new PaymentsService(),
   ) {}
 
   async create(input: CreateOrderInput) {
@@ -128,12 +134,17 @@ export class OrdersService {
           : 0
       const shippingInCents = defaultShippingInCents
       const totalInCents = subtotalInCents + shippingInCents - discountInCents
+      const payment = this.paymentsService.process({
+        method: input.paymentMethod,
+        amountInCents: totalInCents,
+        details: input.paymentDetails,
+      })
       const order = await this.ordersRepository.create({
         customerId: input.customerId,
         storeId,
         addressId: input.addressId ?? null,
         paymentMethod: input.paymentMethod,
-        paymentStatus: 'paid',
+        paymentStatus: payment.status,
         status: 'confirmed',
         deliveryMethod: input.deliveryMethod ?? 'standard',
         subtotalInCents,
@@ -159,8 +170,15 @@ export class OrdersService {
       const event = await this.ordersRepository.createEvent({
         orderId: order.id,
         status: order.status,
-        message: 'Pedido criado e pagamento aprovado.',
-        metadata: { source: 'checkout' },
+        message: `Pedido criado e pagamento aprovado via ${payment.provider}.`,
+        metadata: {
+          source: 'checkout',
+          payment: {
+            provider: payment.provider,
+            transactionId: payment.transactionId,
+            ...payment.metadata,
+          },
+        },
       })
 
       for (const product of storeProducts) {
@@ -190,6 +208,8 @@ export class OrdersService {
           status: order.status,
           totalInCents: order.totalInCents,
           itemCount: items.length,
+          paymentProvider: payment.provider,
+          paymentTransactionId: payment.transactionId,
         },
       })
 
@@ -395,7 +415,8 @@ export function toOrderResponse(input: OrderWithDetails) {
   }
 }
 
+export type { OrderStatus } from '@/repositories/orders-repository'
 export type {
-  OrderStatus,
-  PaymentMethod,
-} from '@/repositories/orders-repository'
+  PaymentDetails,
+  SupportedPaymentMethod as PaymentMethod,
+} from '@/services/payments-service'
