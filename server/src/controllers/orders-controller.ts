@@ -8,10 +8,12 @@ import {
   OrderNotFoundError,
   type OrderStatus,
   OrdersService,
+  type PaymentDetails,
   type PaymentMethod,
   ProductUnavailableError,
   toOrderResponse,
 } from '@/services/orders-service'
+import { PaymentValidationError } from '@/services/payments-service'
 import { StoreAccessDeniedError } from '@/services/stores-service'
 import { sendInternalServerError } from '@/utils/internal-server-error'
 
@@ -19,6 +21,7 @@ type CreateOrderRequest = FastifyRequest<{
   Body: {
     addressId?: string | null
     paymentMethod: PaymentMethod
+    paymentDetails?: PaymentDetails
     deliveryMethod?: string
     couponCode?: string | null
     items: Array<{
@@ -32,6 +35,7 @@ type CreateOrderFromCartRequest = FastifyRequest<{
   Body: {
     addressId?: string | null
     paymentMethod: PaymentMethod
+    paymentDetails?: PaymentDetails
     deliveryMethod?: string
     couponCode?: string | null
   }
@@ -155,6 +159,10 @@ function handleOrderError(error: unknown, reply: FastifyReply) {
 
   if (error instanceof InsufficientStockError) {
     return reply.status(409).send({ message: error.message })
+  }
+
+  if (error instanceof PaymentValidationError) {
+    return reply.status(400).send({ message: error.message })
   }
 
   if (error instanceof OrderNotFoundError) {

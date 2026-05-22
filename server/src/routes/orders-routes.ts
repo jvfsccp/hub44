@@ -16,7 +16,27 @@ const orderStatusSchema = z.enum([
   'canceled',
 ])
 const paymentStatusSchema = z.enum(['pending', 'paid', 'failed', 'refunded'])
-const paymentMethodSchema = z.enum(['card', 'pix', 'boleto'])
+const paymentMethodSchema = z.enum(['card', 'pix'])
+const paymentDetailsSchema = z
+  .object({
+    card: z
+      .object({
+        cardHolderName: z.string().trim().min(3),
+        cardNumber: z.string().trim().min(13),
+        expirationMonth: z.union([z.string().trim().min(1), z.number().int()]),
+        expirationYear: z.union([z.string().trim().min(2), z.number().int()]),
+        cvv: z.string().trim().min(3).max(4),
+        installments: z.number().int().min(1).max(12).optional(),
+      })
+      .optional(),
+    pix: z
+      .object({
+        payerName: z.string().trim().min(3),
+        payerDocument: z.string().trim().min(11),
+      })
+      .optional(),
+  })
+  .optional()
 const orderItemSchema = z.object({
   id: z.string(),
   productId: z.string().nullable(),
@@ -70,6 +90,7 @@ export const ordersRoutes: FastifyPluginAsyncZod = async (app) => {
         body: z.object({
           addressId: z.string().nullable().optional(),
           paymentMethod: paymentMethodSchema,
+          paymentDetails: paymentDetailsSchema,
           deliveryMethod: z.string().trim().min(1).optional(),
           couponCode: z.string().trim().nullable().optional(),
           items: z
@@ -108,6 +129,7 @@ export const ordersRoutes: FastifyPluginAsyncZod = async (app) => {
         body: z.object({
           addressId: z.string().nullable().optional(),
           paymentMethod: paymentMethodSchema,
+          paymentDetails: paymentDetailsSchema,
           deliveryMethod: z.string().trim().min(1).optional(),
           couponCode: z.string().trim().nullable().optional(),
         }),

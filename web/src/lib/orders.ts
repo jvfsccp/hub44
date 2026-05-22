@@ -1,6 +1,8 @@
 import { apiRequest } from '@/lib/api'
+import type { PaymentDetails, PaymentMethod } from '@/lib/payments'
 
-export type PaymentMethod = 'card' | 'pix' | 'boleto'
+export type { PaymentDetails, PaymentMethod } from '@/lib/payments'
+
 export type OrderStatus =
   | 'pending'
   | 'confirmed'
@@ -54,6 +56,7 @@ export type Order = {
 export const orderQueryKeys = {
   all: ['orders'] as const,
   detail: (orderId: string) => ['orders', orderId] as const,
+  seller: ['seller', 'orders'] as const,
 }
 
 export async function listOrders() {
@@ -67,6 +70,7 @@ export async function getOrder(orderId: string) {
 export async function createOrderFromCart(input: {
   addressId?: string | null
   paymentMethod: PaymentMethod
+  paymentDetails?: PaymentDetails
   deliveryMethod?: string
   couponCode?: string | null
 }) {
@@ -74,4 +78,25 @@ export async function createOrderFromCart(input: {
     method: 'POST',
     body: JSON.stringify(input),
   })
+}
+
+export async function listSellerOrders() {
+  return apiRequest<{ orders: Order[] }>('/seller/orders')
+}
+
+export async function updateSellerOrderStatus(input: {
+  orderId: string
+  status: OrderStatus
+  trackingCode?: string | null
+}) {
+  return apiRequest<{ order: Order }>(
+    `/seller/orders/${input.orderId}/status`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: input.status,
+        trackingCode: input.trackingCode,
+      }),
+    },
+  )
 }
