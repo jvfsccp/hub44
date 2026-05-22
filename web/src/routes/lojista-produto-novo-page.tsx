@@ -1,54 +1,103 @@
-import { Link } from '@tanstack/react-router'
-import { ArrowLeft, PackagePlus } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { ArrowLeft, ImagePlus, PackagePlus } from 'lucide-react'
+import { type FormEvent, useState } from 'react'
+
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ApiError } from '@/lib/api'
+import { catalogQueryKeys, listCategories } from '@/lib/catalog'
+import {
+  createSellerProduct,
+  parsePriceToCents,
+  sellerProductQueryKeys,
+  uploadSellerProductImage,
+} from '@/lib/seller-products'
 
 export function LojistaProdutoNovoPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [name, setName] = useState('')
-  const [sku, setSku] = useState('')
-  const [category, setCategory] = useState('')
+  const [slug, setSlug] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [price, setPrice] = useState('')
   const [stock, setStock] = useState('')
-  const [minStock, setMinStock] = useState('')
-  const [sizes, setSizes] = useState('')
-  const [colors, setColors] = useState('')
-  const [material, setMaterial] = useState('')
-  const [model, setModel] = useState('')
-  const [productStatus, setProductStatus] = useState<'rascunho' | 'ativo'>('rascunho')
+  const [productStatus, setProductStatus] = useState<'draft' | 'active'>(
+    'draft',
+  )
   const [description, setDescription] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [image, setImage] = useState<File | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
 
-  async function simulateSave(mode: 'rascunho' | 'publicado') {
-    setFeedback(null)
-    setLoading(true)
+  const categoriesQuery = useQuery({
+    queryKey: catalogQueryKeys.categories,
+    queryFn: listCategories,
+  })
+  const createMutation = useMutation({
+    mutationFn: createSellerProduct,
+    onSuccess: async ({ product }) => {
+      if (image) {
+        await uploadSellerProductImage({ productId: product.id, image })
+      }
 
-    await new Promise((resolve) => {
-      setTimeout(resolve, 900)
-    })
+      queryClient.invalidateQueries({ queryKey: sellerProductQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: catalogQueryKeys.products() })
+      setFeedback('Produto cadastrado com sucesso.')
+      navigate({ to: '/lojista/produtos' })
+    },
+    onError: (error) => {
+      setFeedback(
+        error instanceof ApiError
+          ? error.message
+          : 'Nao foi possivel cadastrar o produto.',
+      )
+    },
+  })
 
-    setLoading(false)
-    setFeedback(
-      mode === 'rascunho'
-        ? 'Produto criado com sucesso como rascunho.'
-        : 'Produto criado com sucesso e marcado como ativo.',
-    )
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    await simulateSave('publicado')
+
+    const priceInCents = parsePriceToCents(price)
+    const stockValue = Number(stock)
+
+    if (!categoryId) {
+      setFeedback('Selecione uma categoria.')
+      return
+    }
+
+    if (!priceInCents) {
+      setFeedback('Informe um preco valido.')
+      return
+    }
+
+    if (!Number.isInteger(stockValue) || stockValue < 0) {
+      setFeedback('Informe um estoque valido.')
+      return
+    }
+
+    setFeedback(null)
+    createMutation.mutate({
+      categoryId,
+      name,
+      slug: slug.trim() || undefined,
+      description: description.trim() || null,
+      priceInCents,
+      stock: stockValue,
+      status: productStatus,
+    })
   }
 
   return (
     <main className="relative min-h-[calc(100vh-92px)] overflow-hidden px-6 py-10 sm:px-10 lg:px-16">
-      <div className="pointer-events-none absolute -top-28 right-12 h-64 w-64 rounded-full bg-primary/14 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-72 w-72 rounded-full bg-secondary/14 blur-3xl" />
-
       <section className="mx-auto w-full max-w-5xl space-y-6 rounded-3xl bg-surface/85 p-6 shadow-[0_18px_40px_-14px_rgba(15,23,42,0.16)] backdrop-blur-xl md:p-8">
         <div className="space-y-2">
           <Link
@@ -62,16 +111,20 @@ export function LojistaProdutoNovoPage() {
             <PackagePlus className="size-3.5" />
             Cadastro de produto
           </Badge>
-          <h1 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">Novo produto</h1>
+          <h1 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">
+            Novo produto
+          </h1>
           <p className="text-sm text-foreground-subtle sm:text-base">
-            Preencha os dados para cadastrar um novo item da sua loja.
+            Cadastre um item real no catalogo da sua loja.
           </p>
         </div>
 
         <Card className="rounded-2xl py-0">
           <CardHeader className="px-5 pt-5 pb-3">
             <CardTitle>Dados do produto</CardTitle>
-            <CardDescription>Formulario com dados simulados locais</CardDescription>
+            <CardDescription>
+              Esses dados serao publicados na API do Hub44.
+            </CardDescription>
           </CardHeader>
           <CardContent className="px-5 pb-5">
             <form className="grid gap-4" onSubmit={handleSubmit}>
@@ -88,13 +141,12 @@ export function LojistaProdutoNovoPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="produto-sku">SKU / código</Label>
+                  <Label htmlFor="produto-slug">Slug personalizado</Label>
                   <Input
-                    id="produto-sku"
-                    value={sku}
-                    onChange={(event) => setSku(event.target.value)}
-                    placeholder="Ex: BLZ-4491"
-                    required
+                    id="produto-slug"
+                    value={slug}
+                    onChange={(event) => setSlug(event.target.value)}
+                    placeholder="Opcional"
                   />
                 </div>
 
@@ -103,17 +155,21 @@ export function LojistaProdutoNovoPage() {
                   <div className="grid grid-cols-2 gap-2 rounded-xl bg-surface-alt p-1">
                     <Button
                       type="button"
-                      variant={productStatus === 'rascunho' ? 'default' : 'outline'}
+                      variant={
+                        productStatus === 'draft' ? 'default' : 'outline'
+                      }
                       className="h-10 rounded-lg"
-                      onClick={() => setProductStatus('rascunho')}
+                      onClick={() => setProductStatus('draft')}
                     >
                       Rascunho
                     </Button>
                     <Button
                       type="button"
-                      variant={productStatus === 'ativo' ? 'default' : 'outline'}
+                      variant={
+                        productStatus === 'active' ? 'default' : 'outline'
+                      }
                       className="h-10 rounded-lg"
-                      onClick={() => setProductStatus('ativo')}
+                      onClick={() => setProductStatus('active')}
                     >
                       Ativo
                     </Button>
@@ -124,19 +180,31 @@ export function LojistaProdutoNovoPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="produto-categoria">Categoria</Label>
-                  <Input
+                  <select
                     id="produto-categoria"
-                    value={category}
-                    onChange={(event) => setCategory(event.target.value)}
-                    placeholder="Ex: Feminino"
+                    className="h-10 rounded-md bg-surface-alt px-3 text-sm outline-none ring-primary/20 transition focus:ring-2"
+                    value={categoryId}
+                    onChange={(event) => setCategoryId(event.target.value)}
                     required
-                  />
+                  >
+                    <option value="">Selecione</option>
+                    {(categoriesQuery.data?.categories ?? []).map(
+                      (category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ),
+                    )}
+                  </select>
                 </div>
 
                 <div className="grid gap-2">
                   <Label htmlFor="produto-estoque">Estoque inicial</Label>
                   <Input
                     id="produto-estoque"
+                    inputMode="numeric"
+                    type="number"
+                    min={0}
                     value={stock}
                     onChange={(event) => setStock(event.target.value)}
                     placeholder="Ex: 48"
@@ -147,79 +215,40 @@ export function LojistaProdutoNovoPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="produto-estoque-minimo">Estoque mínimo</Label>
+                  <Label htmlFor="produto-preco">Preco</Label>
                   <Input
-                    id="produto-estoque-minimo"
-                    value={minStock}
-                    onChange={(event) => setMinStock(event.target.value)}
-                    placeholder="Ex: 10"
+                    id="produto-preco"
+                    inputMode="decimal"
+                    value={price}
+                    onChange={(event) => setPrice(event.target.value)}
+                    placeholder="Ex: R$ 189,90"
                     required
                   />
                 </div>
 
-                <div className="rounded-xl bg-surface-alt/70 p-4">
-                  <p className="text-sm text-foreground-subtle">Imagem do produto</p>
-                  <p className="mt-1 text-sm font-medium text-foreground">Placeholder visual (sem upload real)</p>
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="produto-preco">Preco</Label>
-                <Input
-                  id="produto-preco"
-                  value={price}
-                  onChange={(event) => setPrice(event.target.value)}
-                  placeholder="Ex: R$ 189,90"
-                  required
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="produto-tamanhos">Variações de tamanho</Label>
-                  <Input
-                    id="produto-tamanhos"
-                    value={sizes}
-                    onChange={(event) => setSizes(event.target.value)}
-                    placeholder="Ex: P, M, G, GG"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="produto-cores">Variações de cor</Label>
-                  <Input
-                    id="produto-cores"
-                    value={colors}
-                    onChange={(event) => setColors(event.target.value)}
-                    placeholder="Ex: Preto, Bege, Azul"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="produto-material">Material</Label>
-                  <Input
-                    id="produto-material"
-                    value={material}
-                    onChange={(event) => setMaterial(event.target.value)}
-                    placeholder="Ex: Linho misto"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="produto-modelo">Modelo</Label>
-                  <Input
-                    id="produto-modelo"
-                    value={model}
-                    onChange={(event) => setModel(event.target.value)}
-                    placeholder="Ex: Alfaiataria"
+                  <Label htmlFor="produto-imagem">Imagem do produto</Label>
+                  <label
+                    htmlFor="produto-imagem"
+                    className="flex h-10 cursor-pointer items-center gap-2 rounded-md bg-surface-alt px-3 text-sm text-foreground-subtle ring-primary/20 transition hover:bg-surface focus-within:ring-2"
+                  >
+                    <ImagePlus className="size-4" />
+                    {image?.name ?? 'Selecionar imagem'}
+                  </label>
+                  <input
+                    id="produto-imagem"
+                    className="sr-only"
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) =>
+                      setImage(event.target.files?.[0] ?? null)
+                    }
                   />
                 </div>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="produto-descricao">Descrição</Label>
+                <Label htmlFor="produto-descricao">Descricao</Label>
                 <textarea
                   id="produto-descricao"
                   className="min-h-28 rounded-md border border-transparent bg-surface-alt px-3 py-2 text-sm text-foreground outline-none focus-visible:border-primary/40 focus-visible:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -231,25 +260,26 @@ export function LojistaProdutoNovoPage() {
 
               {feedback ? (
                 <div className="rounded-xl bg-secondary/12 px-3 py-2 text-sm text-secondary-foreground">
-                  <p>{feedback}</p>
-                  <Button className="mt-2" size="sm" variant="outline" render={<Link to="/lojista/produtos" />}>
-                    Ir para meus produtos
-                  </Button>
+                  {feedback}
                 </div>
               ) : null}
 
               <div className="flex flex-wrap gap-2">
                 <Button
+                  type="submit"
+                  variant="secondary"
+                  className="h-11"
+                  disabled={createMutation.isPending}
+                >
+                  {createMutation.isPending ? 'Salvando...' : 'Salvar produto'}
+                </Button>
+                <Button
                   type="button"
                   variant="outline"
                   className="h-11"
-                  disabled={loading}
-                  onClick={() => simulateSave('rascunho')}
+                  render={<Link to="/lojista/produtos" />}
                 >
-                  Salvar rascunho
-                </Button>
-                <Button type="submit" variant="secondary" className="h-11" disabled={loading}>
-                  {loading ? 'Publicando...' : 'Publicar produto'}
+                  Cancelar
                 </Button>
               </div>
             </form>

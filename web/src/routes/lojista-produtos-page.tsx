@@ -1,205 +1,241 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, Box, Search, Store } from 'lucide-react'
+import { ArrowLeft, Box, ImagePlus, Search, Store } from 'lucide-react'
 import { useMemo, useState } from 'react'
+
+import productBlazerImage from '@/assets/stitch/product-blazer.png'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { ApiError } from '@/lib/api'
+import { catalogQueryKeys, listCategories } from '@/lib/catalog'
+import { getProductImageUrls } from '@/lib/product-images'
+import {
+  listSellerProducts,
+  parsePriceToCents,
+  type SellerProduct,
+  type SellerProductStatus,
+  sellerProductQueryKeys,
+  updateSellerProduct,
+  updateSellerProductStatus,
+  uploadSellerProductImage,
+} from '@/lib/seller-products'
 
-type ProductStatus = 'ativo' | 'pausado' | 'rascunho'
+type ProductFilter =
+  | 'Todos'
+  | 'Ativos'
+  | 'Pausados'
+  | 'Rascunhos'
+  | 'Sem estoque'
 
-type Product = {
-  id: string
+type ProductDraft = {
   name: string
+  categoryId: string
   description: string
-  category: string
-  sku: string
-  price: number
-  stock: number
-  status: ProductStatus
-  size: string
-  color: string
-  material: string
-  model: string
-  createdAt: string
-  updatedAt: string
+  price: string
+  stock: string
+  status: SellerProductStatus
 }
-
-const initialProducts: Product[] = [
-  {
-    id: 'prod-1',
-    name: 'Blazer Alfaiataria Premium',
-    description: 'Blazer com corte estruturado para vitrines premium.',
-    category: 'Moda Feminina',
-    sku: 'BLZ-4491',
-    price: 189.9,
-    stock: 32,
-    status: 'ativo',
-    size: 'P, M, G',
-    color: 'Areia',
-    material: 'Linho misto',
-    model: 'Alfaiataria',
-    createdAt: '10/04/2026',
-    updatedAt: 'Hoje, 10:42',
-  },
-  {
-    id: 'prod-2',
-    name: 'Conjunto Linho Soft',
-    description: 'Conjunto leve com modelagem moderna para atacado.',
-    category: 'Casual Chic',
-    sku: 'CJS-1182',
-    price: 249.9,
-    stock: 6,
-    status: 'ativo',
-    size: 'M, G',
-    color: 'Azul claro',
-    material: 'Linho',
-    model: 'Conjunto',
-    createdAt: '04/04/2026',
-    updatedAt: 'Ontem, 17:15',
-  },
-  {
-    id: 'prod-3',
-    name: 'Camisa Social Slim',
-    description: 'Camisa social slim para publico executivo.',
-    category: 'Social',
-    sku: 'CMS-7733',
-    price: 129.9,
-    stock: 0,
-    status: 'ativo',
-    size: 'M, G, GG',
-    color: 'Branca',
-    material: 'Algodao',
-    model: 'Slim',
-    createdAt: '01/04/2026',
-    updatedAt: 'Ontem, 12:08',
-  },
-  {
-    id: 'prod-4',
-    name: 'Saia Midi Elegance',
-    description: 'Saia midi com acabamento premium e alto giro.',
-    category: 'Moda Feminina',
-    sku: 'SAI-3008',
-    price: 149.9,
-    stock: 18,
-    status: 'rascunho',
-    size: 'P, M, G',
-    color: 'Preta',
-    material: 'Viscose',
-    model: 'Midi',
-    createdAt: '29/03/2026',
-    updatedAt: '22/04, 09:20',
-  },
-]
 
 const currency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
 })
+const dateFormatter = new Intl.DateTimeFormat('pt-BR')
 
-function visualStatus(product: Product) {
-  if (product.stock === 0) return 'sem-estoque'
-  if (product.stock <= 8) return 'baixo-estoque'
-  return product.status
+const filters: ProductFilter[] = [
+  'Todos',
+  'Ativos',
+  'Pausados',
+  'Rascunhos',
+  'Sem estoque',
+]
+
+const statusLabels: Record<SellerProductStatus, string> = {
+  active: 'Ativo',
+  paused: 'Pausado',
+  draft: 'Rascunho',
+  inactive: 'Inativo',
+  out_of_stock: 'Sem estoque',
 }
 
-function statusBadge(status: ReturnType<typeof visualStatus>) {
-  if (status === 'baixo-estoque') return <Badge variant="outline">Baixo estoque</Badge>
-  return <Badge variant="secondary">Sem estoque</Badge>
+function lifecycleBadge(status: SellerProductStatus) {
+  if (status === 'active') return <Badge>Ativo</Badge>
+  if (status === 'paused') return <Badge variant="secondary">Pausado</Badge>
+  if (status === 'draft') return <Badge variant="outline">Rascunho</Badge>
+  if (status === 'out_of_stock')
+    return <Badge variant="secondary">Sem estoque</Badge>
+  return <Badge variant="outline">Inativo</Badge>
 }
 
-function lifecycleBadge(status: ProductStatus) {
-  if (status === 'ativo') return <Badge>Ativo</Badge>
-  if (status === 'pausado') return <Badge variant="secondary">Pausado</Badge>
-  return <Badge variant="outline">Rascunho</Badge>
+function getDateLabel(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return dateFormatter.format(date)
+}
+
+function toDraft(product: SellerProduct): ProductDraft {
+  return {
+    name: product.name,
+    categoryId: product.categoryId,
+    description: product.description ?? '',
+    price: currency.format(product.priceInCents / 100),
+    stock: String(product.stock),
+    status: product.status,
+  }
 }
 
 export function LojistaProdutosPage() {
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'Todos' | 'Ativos' | 'Pausados' | 'Sem estoque'>('Todos')
-  const [products, setProducts] = useState(initialProducts)
+  const [filter, setFilter] = useState<ProductFilter>('Todos')
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState<Product | null>(null)
-  const [updatedProductId, setUpdatedProductId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<ProductDraft | null>(null)
+  const [editImage, setEditImage] = useState<File | null>(null)
+  const [feedback, setFeedback] = useState<string | null>(null)
 
-  const activeCount = products.filter((product) => product.status === 'ativo' && product.stock > 0).length
-  const lowStockCount = products.filter((product) => product.stock > 0 && product.stock <= 8).length
-  const outOfStockCount = products.filter((product) => product.stock === 0).length
+  const productsQuery = useQuery({
+    queryKey: sellerProductQueryKeys.all,
+    queryFn: listSellerProducts,
+  })
+  const categoriesQuery = useQuery({
+    queryKey: catalogQueryKeys.categories,
+    queryFn: listCategories,
+  })
+  const updateMutation = useMutation({
+    mutationFn: updateSellerProduct,
+    onSuccess: async ({ product }) => {
+      if (editImage) {
+        await uploadSellerProductImage({
+          productId: product.id,
+          image: editImage,
+        })
+      }
+
+      setFeedback('Produto atualizado.')
+      setEditingProductId(null)
+      setEditDraft(null)
+      setEditImage(null)
+      invalidateProducts(queryClient)
+    },
+    onError: handleMutationError,
+  })
+  const statusMutation = useMutation({
+    mutationFn: updateSellerProductStatus,
+    onSuccess: () => {
+      invalidateProducts(queryClient)
+    },
+    onError: handleMutationError,
+  })
+
+  const products = productsQuery.data?.products ?? []
+  const categories = categoriesQuery.data?.categories ?? []
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((category) => [category.id, category.name])),
+    [categories],
+  )
+  const activeCount = products.filter(
+    (product) => product.status === 'active' && product.stock > 0,
+  ).length
+  const lowStockCount = products.filter(
+    (product) => product.stock > 0 && product.stock <= 8,
+  ).length
+  const outOfStockCount = products.filter(
+    (product) => product.stock === 0 || product.status === 'out_of_stock',
+  ).length
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase()
 
     return products.filter((product) => {
+      const categoryName = categoryNameById.get(product.categoryId) ?? ''
       const matchesSearch =
         !query ||
-        product.name.toLowerCase().includes(query) ||
-        product.category.toLowerCase().includes(query) ||
-        product.sku.toLowerCase().includes(query)
-
+        `${product.name} ${categoryName} ${product.slug}`
+          .toLowerCase()
+          .includes(query)
       const matchesFilter =
         filter === 'Todos' ||
-        (filter === 'Ativos' && product.status === 'ativo' && product.stock > 0) ||
-        (filter === 'Pausados' && product.status === 'pausado') ||
-        (filter === 'Sem estoque' && product.stock === 0)
+        (filter === 'Ativos' &&
+          product.status === 'active' &&
+          product.stock > 0) ||
+        (filter === 'Pausados' && product.status === 'paused') ||
+        (filter === 'Rascunhos' && product.status === 'draft') ||
+        (filter === 'Sem estoque' &&
+          (product.stock === 0 || product.status === 'out_of_stock'))
 
       return matchesSearch && matchesFilter
     })
-  }, [filter, products, search])
+  }, [categoryNameById, filter, products, search])
 
-  function pauseProduct(productId: string) {
-    setProducts((current) =>
-      current.map((product) =>
-        product.id === productId ? { ...product, status: 'pausado' } : product,
-      ),
+  function handleMutationError(error: unknown) {
+    setFeedback(
+      error instanceof ApiError
+        ? error.message
+        : 'Nao foi possivel concluir a operacao.',
     )
   }
 
-  function activateProduct(productId: string) {
-    setProducts((current) =>
-      current.map((product) =>
-        product.id === productId ? { ...product, status: 'ativo' } : product,
-      ),
-    )
-  }
-
-  function openEditor(product: Product) {
+  function openEditor(product: SellerProduct) {
+    setFeedback(null)
     setEditingProductId(product.id)
-    setEditDraft(product)
+    setEditDraft(toDraft(product))
+    setEditImage(null)
   }
 
   function cancelEditor() {
     setEditingProductId(null)
     setEditDraft(null)
+    setEditImage(null)
   }
 
-  function saveChanges() {
-    if (!editingProductId || !editDraft) return
+  function saveChanges(productId: string) {
+    if (!editDraft) return
 
-    setProducts((current) =>
-      current.map((product) =>
-        product.id === editingProductId
-          ? {
-              ...editDraft,
-              updatedAt: 'Agora',
-            }
-          : product,
-      ),
-    )
+    const priceInCents = parsePriceToCents(editDraft.price)
+    const stock = Number(editDraft.stock)
 
-    setUpdatedProductId(editingProductId)
-    setEditingProductId(null)
-    setEditDraft(null)
+    if (!priceInCents) {
+      setFeedback('Informe um preco valido.')
+      return
+    }
 
-    setTimeout(() => {
-      setUpdatedProductId(null)
-    }, 2000)
+    if (!Number.isInteger(stock) || stock < 0) {
+      setFeedback('Informe um estoque valido.')
+      return
+    }
+
+    updateMutation.mutate({
+      productId,
+      data: {
+        name: editDraft.name,
+        categoryId: editDraft.categoryId,
+        description: editDraft.description.trim() || null,
+        priceInCents,
+        stock,
+        status: editDraft.status,
+      },
+    })
+  }
+
+  function setProductStatus(productId: string, status: SellerProductStatus) {
+    setFeedback(null)
+    statusMutation.mutate({ productId, status })
   }
 
   return (
     <main className="relative min-h-[calc(100vh-92px)] overflow-hidden px-6 py-10 sm:px-10 lg:px-16">
-      <div className="pointer-events-none absolute -top-28 right-12 h-64 w-64 rounded-full bg-primary/14 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-72 w-72 rounded-full bg-secondary/14 blur-3xl" />
-
       <section className="mx-auto w-full max-w-7xl space-y-6 rounded-3xl bg-surface/85 p-6 shadow-[0_18px_40px_-14px_rgba(15,23,42,0.16)] backdrop-blur-xl md:p-8">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
@@ -210,12 +246,17 @@ export function LojistaProdutosPage() {
               <ArrowLeft className="size-4" />
               Voltar ao dashboard
             </Link>
-            <h1 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">Meus produtos</h1>
+            <h1 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">
+              Meus produtos
+            </h1>
             <p className="text-sm text-foreground-subtle sm:text-base">
-              Gerencie seu catalogo, estoque e status de exibicao da loja.
+              Gerencie catalogo, imagens, estoque e status da sua loja.
             </p>
           </div>
-          <Button variant="secondary" render={<Link to="/lojista/produtos/novo" />}>
+          <Button
+            variant="secondary"
+            render={<Link to="/lojista/produtos/novo" />}
+          >
             Novo produto
           </Button>
         </header>
@@ -224,7 +265,10 @@ export function LojistaProdutosPage() {
           <SummaryCard title="Produtos ativos" value={String(activeCount)} />
           <SummaryCard title="Baixo estoque" value={String(lowStockCount)} />
           <SummaryCard title="Sem estoque" value={String(outOfStockCount)} />
-          <SummaryCard title="Total de produtos" value={String(products.length)} />
+          <SummaryCard
+            title="Total de produtos"
+            value={String(products.length)}
+          />
         </div>
 
         <Card className="rounded-2xl py-0">
@@ -238,12 +282,12 @@ export function LojistaProdutosPage() {
                 className="pl-9"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por nome, categoria ou SKU"
+                placeholder="Buscar por nome, categoria ou slug"
               />
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {(['Todos', 'Ativos', 'Pausados', 'Sem estoque'] as const).map((option) => (
+              {filters.map((option) => (
                 <Button
                   key={option}
                   type="button"
@@ -256,177 +300,267 @@ export function LojistaProdutosPage() {
               ))}
             </div>
 
-            <p className="text-sm text-foreground-subtle">{filteredProducts.length} produtos encontrados</p>
+            <p className="text-sm text-foreground-subtle">
+              {filteredProducts.length} produto(s) encontrado(s)
+            </p>
           </CardContent>
         </Card>
+
+        {feedback ? (
+          <div className="rounded-xl bg-secondary/12 px-3 py-2 text-sm text-secondary-foreground">
+            {feedback}
+          </div>
+        ) : null}
 
         <Card className="rounded-2xl py-0">
           <CardHeader className="px-5 pt-5 pb-3">
             <CardTitle>Catalogo da loja</CardTitle>
-            <CardDescription>Dados simulados locais para gestao de produtos</CardDescription>
+            <CardDescription>Dados sincronizados com a API</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 px-5 pb-5">
-            {filteredProducts.length === 0 ? (
+            {productsQuery.isLoading ? (
+              <div className="rounded-xl bg-surface-alt/75 px-4 py-6 text-center text-sm text-foreground-subtle">
+                Carregando produtos...
+              </div>
+            ) : null}
+
+            {!productsQuery.isLoading && filteredProducts.length === 0 ? (
               <div className="rounded-xl bg-surface-alt/75 px-4 py-6 text-center">
                 <Box className="mx-auto mb-2 size-6 text-foreground-subtle" />
-                <p className="font-medium text-foreground">Nenhum produto encontrado</p>
-                <p className="mt-1 text-sm text-foreground-subtle">Ajuste os filtros ou o termo de busca.</p>
+                <p className="font-medium text-foreground">
+                  Nenhum produto encontrado
+                </p>
+                <p className="mt-1 text-sm text-foreground-subtle">
+                  Ajuste os filtros ou cadastre um novo produto.
+                </p>
               </div>
-            ) : (
-              filteredProducts.map((product) => {
-                const status = visualStatus(product)
-                return (
-                  <article key={product.id} className="rounded-xl bg-surface-alt/70 p-4">
-                    <div className="flex flex-col gap-4 sm:flex-row">
-                      <div className="h-22 w-full rounded-xl bg-linear-135 from-primary/25 to-secondary/25 sm:h-20 sm:w-20" />
+            ) : null}
 
-                      <div className="flex-1 space-y-2">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <p className="font-semibold text-foreground">{product.name}</p>
-                            <p className="text-sm text-foreground-subtle">{product.category}</p>
-                            <p className="mt-1 text-sm text-foreground-subtle">{product.description}</p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <div className="flex flex-wrap justify-end gap-1">
-                              {lifecycleBadge(product.status)}
-                              {statusBadge(status)}
-                            </div>
-                            <Badge variant="outline">Ultima atualizacao: {product.updatedAt}</Badge>
-                          </div>
+            {filteredProducts.map((product) => {
+              const categoryName =
+                categoryNameById.get(product.categoryId) ?? 'Categoria'
+              const isEditing = editingProductId === product.id && editDraft
+              const productImage = getProductImageUrls(
+                product,
+                productBlazerImage,
+              )[0]
+
+              return (
+                <article
+                  key={product.id}
+                  className="rounded-xl bg-surface-alt/70 p-4"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row">
+                    <img
+                      src={productImage}
+                      alt={product.name}
+                      className="h-24 w-full rounded-xl object-cover sm:w-24"
+                    />
+
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {product.name}
+                          </p>
+                          <p className="text-sm text-foreground-subtle">
+                            {categoryName}
+                          </p>
+                          <p className="mt-1 text-sm text-foreground-subtle">
+                            {product.description ?? 'Sem descricao.'}
+                          </p>
                         </div>
-
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-foreground-subtle">
-                          <span>SKU: {product.sku}</span>
-                          <span>Criado em: {product.createdAt}</span>
-                          <span>Preco: {currency.format(product.price)}</span>
-                          <span>Estoque: {product.stock}</span>
-                          {product.stock > 0 && product.stock <= 8 ? (
-                            <span className="font-medium text-secondary-foreground">Aviso: estoque baixo</span>
-                          ) : null}
-                        </div>
-
-                        {updatedProductId === product.id ? (
-                          <Badge variant="secondary">Produto atualizado</Badge>
-                        ) : null}
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button type="button" size="sm" variant="outline" onClick={() => openEditor(product)}>
-                            Editar
-                          </Button>
-                          {product.status === 'ativo' ? (
-                            <Button type="button" size="sm" variant="ghost" onClick={() => pauseProduct(product.id)}>
-                              Pausar produto
-                            </Button>
-                          ) : (
-                            <Button type="button" size="sm" onClick={() => activateProduct(product.id)}>
-                              {product.status === 'rascunho' ? 'Publicar produto' : 'Ativar produto'}
-                            </Button>
-                          )}
-                          <Button type="button" size="sm" variant="ghost" render={<Link to="/lojista/loja" />}>
-                            <Store className="size-4" />
-                            Ver loja
-                          </Button>
-                        </div>
-
-                        {editingProductId === product.id && editDraft ? (
-                          <div className="mt-2 grid gap-3 rounded-xl bg-surface p-3">
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <Input
-                                value={editDraft.name}
-                                onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })}
-                                placeholder="Nome"
-                              />
-                              <Input
-                                value={editDraft.category}
-                                onChange={(event) => setEditDraft({ ...editDraft, category: event.target.value })}
-                                placeholder="Categoria"
-                              />
-                            </div>
-                            <Input
-                              value={editDraft.description}
-                              onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
-                              placeholder="Descricao"
-                            />
-                            <div className="grid gap-2 sm:grid-cols-3">
-                              <Input
-                                value={String(editDraft.price)}
-                                onChange={(event) =>
-                                  setEditDraft({ ...editDraft, price: Number(event.target.value) || 0 })
-                                }
-                                placeholder="Preco"
-                              />
-                              <Input
-                                value={String(editDraft.stock)}
-                                onChange={(event) =>
-                                  setEditDraft({ ...editDraft, stock: Number(event.target.value) || 0 })
-                                }
-                                placeholder="Estoque"
-                              />
-                              <Input
-                                value={editDraft.sku}
-                                onChange={(event) => setEditDraft({ ...editDraft, sku: event.target.value })}
-                                placeholder="SKU"
-                              />
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <Input
-                                value={editDraft.size}
-                                onChange={(event) => setEditDraft({ ...editDraft, size: event.target.value })}
-                                placeholder="Tamanho"
-                              />
-                              <Input
-                                value={editDraft.color}
-                                onChange={(event) => setEditDraft({ ...editDraft, color: event.target.value })}
-                                placeholder="Cor"
-                              />
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <Input
-                                value={editDraft.material}
-                                onChange={(event) => setEditDraft({ ...editDraft, material: event.target.value })}
-                                placeholder="Material"
-                              />
-                              <Input
-                                value={editDraft.model}
-                                onChange={(event) => setEditDraft({ ...editDraft, model: event.target.value })}
-                                placeholder="Modelo"
-                              />
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={editDraft.status === 'ativo' ? 'default' : 'outline'}
-                                onClick={() => setEditDraft({ ...editDraft, status: 'ativo' })}
-                              >
-                                Ativo
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={editDraft.status === 'pausado' ? 'secondary' : 'outline'}
-                                onClick={() => setEditDraft({ ...editDraft, status: 'pausado' })}
-                              >
-                                Pausado
-                              </Button>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button type="button" size="sm" onClick={saveChanges}>
-                                Salvar alteracoes
-                              </Button>
-                              <Button type="button" size="sm" variant="ghost" onClick={cancelEditor}>
-                                Cancelar
-                              </Button>
-                            </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex flex-wrap justify-end gap-1">
+                            {lifecycleBadge(product.status)}
+                            {product.stock > 0 && product.stock <= 8 ? (
+                              <Badge variant="outline">Baixo estoque</Badge>
+                            ) : null}
                           </div>
-                        ) : null}
+                          <Badge variant="outline">
+                            Atualizado em {getDateLabel(product.updatedAt)}
+                          </Badge>
+                        </div>
                       </div>
+
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-foreground-subtle">
+                        <span>Slug: {product.slug}</span>
+                        <span>
+                          Criado em: {getDateLabel(product.createdAt)}
+                        </span>
+                        <span>
+                          Preco: {currency.format(product.priceInCents / 100)}
+                        </span>
+                        <span>Estoque: {product.stock}</span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEditor(product)}
+                        >
+                          Editar
+                        </Button>
+                        {product.status === 'active' ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={statusMutation.isPending}
+                            onClick={() =>
+                              setProductStatus(product.id, 'paused')
+                            }
+                          >
+                            Pausar produto
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={statusMutation.isPending}
+                            onClick={() =>
+                              setProductStatus(product.id, 'active')
+                            }
+                          >
+                            {product.status === 'draft'
+                              ? 'Publicar produto'
+                              : 'Ativar produto'}
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          render={<Link to="/lojista/loja" />}
+                        >
+                          <Store className="size-4" />
+                          Ver loja
+                        </Button>
+                      </div>
+
+                      {isEditing ? (
+                        <div className="mt-2 grid gap-3 rounded-xl bg-surface p-3">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <Input
+                              value={editDraft.name}
+                              onChange={(event) =>
+                                setEditDraft({
+                                  ...editDraft,
+                                  name: event.target.value,
+                                })
+                              }
+                              placeholder="Nome"
+                            />
+                            <select
+                              className="h-10 rounded-md bg-surface-alt px-3 text-sm outline-none ring-primary/20 transition focus:ring-2"
+                              value={editDraft.categoryId}
+                              onChange={(event) =>
+                                setEditDraft({
+                                  ...editDraft,
+                                  categoryId: event.target.value,
+                                })
+                              }
+                            >
+                              {categories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                  {category.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <Input
+                            value={editDraft.description}
+                            onChange={(event) =>
+                              setEditDraft({
+                                ...editDraft,
+                                description: event.target.value,
+                              })
+                            }
+                            placeholder="Descricao"
+                          />
+                          <div className="grid gap-2 sm:grid-cols-3">
+                            <Input
+                              value={editDraft.price}
+                              onChange={(event) =>
+                                setEditDraft({
+                                  ...editDraft,
+                                  price: event.target.value,
+                                })
+                              }
+                              placeholder="Preco"
+                            />
+                            <Input
+                              inputMode="numeric"
+                              type="number"
+                              min={0}
+                              value={editDraft.stock}
+                              onChange={(event) =>
+                                setEditDraft({
+                                  ...editDraft,
+                                  stock: event.target.value,
+                                })
+                              }
+                              placeholder="Estoque"
+                            />
+                            <select
+                              className="h-10 rounded-md bg-surface-alt px-3 text-sm outline-none ring-primary/20 transition focus:ring-2"
+                              value={editDraft.status}
+                              onChange={(event) =>
+                                setEditDraft({
+                                  ...editDraft,
+                                  status: event.target
+                                    .value as SellerProductStatus,
+                                })
+                              }
+                            >
+                              {Object.entries(statusLabels).map(
+                                ([value, label]) => (
+                                  <option key={value} value={value}>
+                                    {label}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </div>
+                          <label className="flex h-10 cursor-pointer items-center gap-2 rounded-md bg-surface-alt px-3 text-sm text-foreground-subtle">
+                            <ImagePlus className="size-4" />
+                            {editImage?.name ?? 'Trocar imagem'}
+                            <input
+                              className="sr-only"
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) =>
+                                setEditImage(event.target.files?.[0] ?? null)
+                              }
+                            />
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={updateMutation.isPending}
+                              onClick={() => saveChanges(product.id)}
+                            >
+                              Salvar alteracoes
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={cancelEditor}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
-                  </article>
-                )
-              })
-            )}
+                  </div>
+                </article>
+              )
+            })}
           </CardContent>
         </Card>
       </section>
@@ -439,8 +573,15 @@ function SummaryCard({ title, value }: { title: string; value: string }) {
     <Card className="rounded-2xl py-0">
       <CardContent className="p-5">
         <p className="text-sm text-foreground-subtle">{title}</p>
-        <p className="mt-1 font-heading text-2xl font-semibold text-foreground">{value}</p>
+        <p className="mt-1 font-heading text-2xl font-semibold text-foreground">
+          {value}
+        </p>
       </CardContent>
     </Card>
   )
+}
+
+function invalidateProducts(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: sellerProductQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: catalogQueryKeys.products() })
 }

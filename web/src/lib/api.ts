@@ -1,4 +1,4 @@
-const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3333'
+const apiBaseUrl = import.meta.env?.VITE_API_URL ?? 'http://localhost:3333'
 
 export class ApiError extends Error {
   readonly status: number
@@ -28,7 +28,11 @@ export async function apiRequest<TResponse>(
   const headers = new Headers(options.headers)
   const accessToken = getAccessToken()
 
-  if (options.body && !headers.has('Content-Type')) {
+  if (
+    options.body &&
+    !headers.has('Content-Type') &&
+    !(options.body instanceof FormData)
+  ) {
     headers.set('Content-Type', 'application/json')
   }
 
