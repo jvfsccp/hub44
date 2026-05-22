@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 
 import { db } from '@/db'
 import notifications from '@/db/schema/notifications'
@@ -28,5 +28,34 @@ export class NotificationsRepository {
       .from(notifications)
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt))
+  }
+
+  async markAsRead(userId: string, notificationId: string) {
+    const [notification] = await db
+      .update(notifications)
+      .set({
+        readAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.id, notificationId),
+        ),
+      )
+      .returning()
+
+    return notification ?? null
+  }
+
+  async markAllAsRead(userId: string) {
+    return db
+      .update(notifications)
+      .set({
+        readAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(notifications.userId, userId))
+      .returning()
   }
 }
