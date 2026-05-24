@@ -26,7 +26,7 @@ import storeKidsImage from '@/assets/stitch/store-kids.png'
 import storeUrbanImage from '@/assets/stitch/store-urban.png'
 import { MarketplaceHeader } from '@/components/marketplace/marketplace-header'
 import { Button } from '@/components/ui/button'
-import { ApiError, getAccessToken } from '@/lib/api'
+import { ApiError, getAccessToken, resolveApiAssetUrl } from '@/lib/api'
 import { addCartItem, cartQueryKeys } from '@/lib/cart'
 import {
   catalogQueryKeys,
@@ -231,7 +231,11 @@ export function CustomerMarketplacePage() {
                 <div className="mb-6 flex items-center gap-4">
                   <img
                     src={
-                      fallbackStoreImages[index % fallbackStoreImages.length]
+                      store.logoUrl
+                        ? resolveApiAssetUrl(store.logoUrl)
+                        : fallbackStoreImages[
+                            index % fallbackStoreImages.length
+                          ]
                     }
                     alt={`Logo ${store.name}`}
                     className="size-16 rounded-2xl object-cover"
