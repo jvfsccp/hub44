@@ -38,6 +38,7 @@ export async function register(input: {
   email: string
   phone: string
   password: string
+  role?: Extract<UserRole, 'customer' | 'seller'>
 }) {
   return apiRequest<{ user: PublicUser }>('/auth/register', {
     method: 'POST',
