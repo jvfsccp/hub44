@@ -1,4 +1,5 @@
 const apiBaseUrl = import.meta.env?.VITE_API_URL ?? 'http://localhost:3333'
+const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, '')
 
 export class ApiError extends Error {
   readonly status: number
@@ -21,6 +22,24 @@ export function clearAccessToken() {
   localStorage.removeItem('hub44:access-token')
 }
 
+export function resolveApiAssetUrl(url: string) {
+  const normalizedUrl = url.trim()
+
+  if (!normalizedUrl) {
+    return normalizedUrl
+  }
+
+  if (/^(https?:|data:|blob:)/i.test(normalizedUrl)) {
+    return normalizedUrl
+  }
+
+  if (normalizedUrl.startsWith('/')) {
+    return `${normalizedApiBaseUrl}${normalizedUrl}`
+  }
+
+  return normalizedUrl
+}
+
 export async function apiRequest<TResponse>(
   path: string,
   options: RequestInit = {},
@@ -40,7 +59,7 @@ export async function apiRequest<TResponse>(
     headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const response = await fetch(`${normalizedApiBaseUrl}${path}`, {
     ...options,
     headers,
     credentials: 'include',
