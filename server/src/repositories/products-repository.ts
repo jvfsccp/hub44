@@ -79,6 +79,12 @@ export class ProductsRepository {
       )
   }
 
+  async findPublicById(id: string) {
+    const [product] = await this.findPublicByIds([id])
+
+    return product ?? null
+  }
+
   async listByStoreId(storeId: string) {
     return db
       .select()

@@ -1,4 +1,5 @@
 import type { Product } from '@/lib/catalog'
+import { resolveApiAssetUrl } from './api.ts'
 
 export function getProductImageUrls(
   product: Pick<Product, 'imageUrl' | 'imageUrls'> | null | undefined,
@@ -15,7 +16,7 @@ export function getProductImageUrls(
     const normalizedUrl = url?.trim()
 
     if (normalizedUrl) {
-      uniqueUrls.add(normalizedUrl)
+      uniqueUrls.add(resolveApiAssetUrl(normalizedUrl))
     }
   }
 

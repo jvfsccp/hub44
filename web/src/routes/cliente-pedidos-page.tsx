@@ -15,6 +15,7 @@ import { useMemo, useState } from 'react'
 import productBlazerImage from '@/assets/stitch/product-blazer.png'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { resolveApiAssetUrl } from '@/lib/api'
 import {
   listOrders,
   type Order,
@@ -338,7 +339,11 @@ function OrderCard({ order }: { order: Order }) {
 
       <div className="grid gap-4 p-4 md:grid-cols-[5rem_1fr_auto] md:items-center">
         <img
-          src={firstItem?.productImageUrl ?? productBlazerImage}
+          src={
+            firstItem?.productImageUrl
+              ? resolveApiAssetUrl(firstItem.productImageUrl)
+              : productBlazerImage
+          }
           alt={firstItem?.productName ?? 'Produto do pedido'}
           className="size-20 rounded-sm border border-border/70 object-cover"
         />

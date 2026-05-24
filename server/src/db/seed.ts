@@ -6,10 +6,12 @@ import { Pool } from 'pg'
 import * as schema from '@/db/schema'
 import addresses from '@/db/schema/addresses'
 import categories from '@/db/schema/categories'
+import productImages from '@/db/schema/product-images'
 import products from '@/db/schema/products'
 import stores from '@/db/schema/stores'
 import users from '@/db/schema/users'
 import { env } from '@/env'
+import { SUPABASE_BUCKET, supabase } from '@/lib/supabase'
 import { createSlug } from '@/utils/slug'
 
 type SeedCategory = {
@@ -24,6 +26,7 @@ type SeedProduct = {
   description: string
   priceInCents: number
   stock: number
+  storageFolder?: string
 }
 
 type SeedStore = {
@@ -32,6 +35,7 @@ type SeedStore = {
     description: string
     cnpj: string
     phone: string
+    storageFolder?: string
   }
   address: {
     street: string
@@ -43,6 +47,17 @@ type SeedStore = {
     zipCode: string
   }
   products: SeedProduct[]
+}
+
+type SeedImageReference = {
+  path: string
+  imageUrl: string
+}
+
+type StorageListItem = {
+  id?: string | null
+  name: string
+  metadata?: unknown
 }
 
 const seedPassword = '12345678'
@@ -549,6 +564,9 @@ const seedStores: SeedStore[] = [
 
 const pool = new Pool({ connectionString: env.DATABASE_URL })
 const db = drizzle(pool, { schema, casing: 'snake_case' })
+const storageFolderCache = new Map<string, StorageListItem[]>()
+const missingStorageFolders = new Set<string>()
+const seedStorageDebug = process.env.SEED_STORAGE_DEBUG === 'true'
 
 async function main() {
   const passwordHash = await hash(seedPassword, 8)
@@ -589,9 +607,17 @@ async function main() {
     categoriesBySlug.set(record.slug, record)
   }
 
-  for (const seedStore of seedStores) {
+  for (const [storeIndex, seedStore] of seedStores.entries()) {
     const storeSlug = createSlug(seedStore.store.name)
     const ownerEmail = `${storeSlug}@seed.hub44.test`
+    const fallbackLogoUrl = getSeedAssetUrl('store-logo', storeSlug, {
+      label: seedStore.store.name,
+      variant: 'Hub44',
+    })
+    const fallbackBannerUrl = getSeedAssetUrl('store-banner', storeSlug, {
+      label: seedStore.store.name,
+      variant: 'Loja aprovada',
+    })
 
     const [owner] = await db
       .insert(users)
@@ -623,6 +649,8 @@ async function main() {
         description: seedStore.store.description,
         cnpj: seedStore.store.cnpj,
         phone: seedStore.store.phone,
+        logoUrl: fallbackLogoUrl,
+        bannerUrl: fallbackBannerUrl,
         status: 'approved',
       })
       .onConflictDoUpdate({
@@ -633,31 +661,58 @@ async function main() {
           description: seedStore.store.description,
           cnpj: seedStore.store.cnpj,
           phone: seedStore.store.phone,
+          logoUrl: fallbackLogoUrl,
+          bannerUrl: fallbackBannerUrl,
           status: 'approved',
           updatedAt: new Date(),
         },
       })
       .returning({ id: stores.id })
 
+    const storeImageUrls = await getSeedStoreImageUrls({
+      storeId: store.id,
+      storeSlug,
+      storeIndex,
+      storeName: seedStore.store.name,
+      storageFolder: seedStore.store.storageFolder,
+    })
+
+    await db
+      .update(stores)
+      .set({
+        logoUrl: storeImageUrls.logoUrl,
+        bannerUrl: storeImageUrls.bannerUrl,
+        updatedAt: new Date(),
+      })
+      .where(eq(stores.id, store.id))
+
     await upsertStoreAddress(store.id, seedStore)
 
-    for (const seedProduct of seedStore.products) {
+    for (const [productIndex, seedProduct] of seedStore.products.entries()) {
       const category = categoriesBySlug.get(seedProduct.categorySlug)
 
       if (!category) {
         throw new Error(`Missing seed category ${seedProduct.categorySlug}`)
       }
 
-      await db
+      const productSlug = createSlug(seedProduct.name)
+      const fallbackProductImages = getFallbackProductImages(
+        storeSlug,
+        productSlug,
+        seedProduct.name,
+      )
+
+      const [product] = await db
         .insert(products)
         .values({
           storeId: store.id,
           categoryId: category.id,
           name: seedProduct.name,
-          slug: createSlug(seedProduct.name),
+          slug: productSlug,
           description: seedProduct.description,
           priceInCents: seedProduct.priceInCents,
           stock: seedProduct.stock,
+          imageUrl: fallbackProductImages[0]?.imageUrl,
           status: 'active',
         })
         .onConflictDoUpdate({
@@ -668,17 +723,55 @@ async function main() {
             description: seedProduct.description,
             priceInCents: seedProduct.priceInCents,
             stock: seedProduct.stock,
+            imageUrl: fallbackProductImages[0]?.imageUrl,
             status: 'active',
             updatedAt: new Date(),
           },
         })
+        .returning({ id: products.id })
+
+      const productImagesResult = await getSeedProductImages({
+        storeId: store.id,
+        storeName: seedStore.store.name,
+        storeSlug,
+        storeIndex,
+        productId: product.id,
+        productSlug,
+        productIndex,
+        productName: seedProduct.name,
+        storageFolder: seedProduct.storageFolder,
+        storeStorageFolder: seedStore.store.storageFolder,
+      })
+
+      if (seedStorageDebug) {
+        console.info(
+          `[seed:storage] ${seedStore.store.name} > ${seedProduct.name}: ${productImagesResult.images.map((image) => image.path).join(', ')}`,
+        )
+      }
+
+      const [primaryImage] = productImagesResult.images
+
+      if (primaryImage) {
+        await db
+          .update(products)
+          .set({
+            imageUrl: primaryImage.imageUrl,
+            updatedAt: new Date(),
+          })
+          .where(eq(products.id, product.id))
+      }
+
+      await upsertProductImages({
+        productId: product.id,
+        images: productImagesResult.images,
+      })
 
       productCount += 1
     }
   }
 
   console.info(
-    `Seed concluido: ${seedCategories.length} categorias, ${seedStores.length} lojas e ${productCount} produtos.`,
+    `Seed concluido: ${seedCategories.length} categorias, ${seedStores.length} lojas e ${productCount} produtos com imagens.`,
   )
   console.info(`Usuario admin: ${seedAdmin.email} / senha "${seedPassword}".`)
   console.info(
@@ -716,6 +809,375 @@ async function upsertStoreAddress(storeId: string, seedStore: SeedStore) {
   }
 
   await db.insert(addresses).values(addressValues)
+}
+
+async function upsertProductImages(input: {
+  productId: string
+  images: SeedImageReference[]
+}) {
+  await db
+    .delete(productImages)
+    .where(eq(productImages.productId, input.productId))
+
+  for (const [index, image] of input.images.entries()) {
+    const position = index + 1
+
+    await db
+      .insert(productImages)
+      .values({
+        productId: input.productId,
+        path: image.path,
+        imageUrl: image.imageUrl,
+        position,
+      })
+      .onConflictDoUpdate({
+        target: productImages.path,
+        set: {
+          productId: input.productId,
+          imageUrl: image.imageUrl,
+          position,
+          updatedAt: new Date(),
+        },
+      })
+  }
+}
+
+async function getSeedStoreImageUrls(input: {
+  storeId: string
+  storeSlug: string
+  storeIndex: number
+  storeName: string
+  storageFolder?: string
+}) {
+  const logo = await findStoreStorageImage(input, 'logo')
+  const banner = await findStoreStorageImage(input, 'banner')
+
+  return {
+    logoUrl:
+      logo?.imageUrl ??
+      getSeedAssetUrl('store-logo', input.storeSlug, {
+        label: input.storeName,
+        variant: 'Hub44',
+      }),
+    bannerUrl:
+      banner?.imageUrl ??
+      getSeedAssetUrl('store-banner', input.storeSlug, {
+        label: input.storeName,
+        variant: 'Loja aprovada',
+      }),
+  }
+}
+
+async function getSeedProductImages(input: {
+  storeId: string
+  storeName?: string
+  storeSlug: string
+  storeIndex: number
+  productId: string
+  productSlug: string
+  productIndex: number
+  productName: string
+  storageFolder?: string
+  storeStorageFolder?: string
+}): Promise<{ images: SeedImageReference[]; source: 'storage' | 'fallback' }> {
+  const storageImages = await findProductStorageImages(input)
+
+  if (storageImages.length > 0) {
+    return { images: storageImages, source: 'storage' }
+  }
+
+  return {
+    images: getFallbackProductImages(
+      input.storeSlug,
+      input.productSlug,
+      input.productName,
+    ),
+    source: 'fallback',
+  }
+}
+
+async function findStoreStorageImage(
+  input: {
+    storeId: string
+    storeSlug: string
+    storeIndex: number
+    storeName?: string
+    storageFolder?: string
+  },
+  kind: 'logo' | 'banner',
+) {
+  const legacyStoreFolder =
+    input.storageFolder ?? (await getLegacyStoreFolder(input.storeIndex))
+  const candidateFolders = uniqueValues([
+    input.storeSlug,
+    input.storeName,
+    legacyStoreFolder,
+    input.storeId,
+    `seed/${input.storeSlug}`,
+  ])
+
+  for (const folder of candidateFolders) {
+    const files = await listStorageFolder(folder)
+    const file = files.find(
+      (item) =>
+        item.name === kind ||
+        item.name.startsWith(`${kind}.`) ||
+        item.name.startsWith(`${kind}-`),
+    )
+
+    if (file) {
+      const path = joinStoragePath(folder, file.name)
+
+      return { path, imageUrl: getStoragePublicUrl(path) }
+    }
+  }
+
+  return null
+}
+
+async function findProductStorageImages(input: {
+  storeId: string
+  storeName?: string
+  storeSlug: string
+  storeIndex: number
+  productId: string
+  productSlug: string
+  productIndex: number
+  productName?: string
+  storageFolder?: string
+  storeStorageFolder?: string
+}) {
+  const legacyStoreFolder =
+    input.storeStorageFolder ?? (await getLegacyStoreFolder(input.storeIndex))
+  const legacyProductFolder = legacyStoreFolder
+    ? await getLegacyProductFolder(legacyStoreFolder, input.productIndex)
+    : null
+
+  const candidateFolders = uniqueValues([
+    ...getExplicitProductFolderCandidates(input.storageFolder, {
+      storeId: input.storeId,
+      storeName: input.storeName,
+      storeSlug: input.storeSlug,
+      legacyStoreFolder,
+    }),
+    `${input.storeSlug}/products/${input.productSlug}`,
+    input.productName
+      ? `${input.storeSlug}/products/${input.productName}`
+      : null,
+    input.storeName ? `${input.storeName}/products/${input.productSlug}` : null,
+    input.storeName && input.productName
+      ? `${input.storeName}/products/${input.productName}`
+      : null,
+    `seed/${input.storeSlug}/products/${input.productSlug}`,
+    `${input.storeId}/products/${input.productId}`,
+    `${input.storeId}/products/${input.productSlug}`,
+    input.productName ? `${input.storeId}/products/${input.productName}` : null,
+    legacyProductFolder,
+    legacyStoreFolder
+      ? `${legacyStoreFolder}/products/${input.productId}`
+      : null,
+    legacyStoreFolder
+      ? `${legacyStoreFolder}/products/${input.productSlug}`
+      : null,
+  ])
+
+  for (const folder of candidateFolders) {
+    const files = await listStorageFolder(folder)
+    const images = files.filter(isStorageImageFile).sort(compareStorageFiles)
+
+    if (images.length > 0) {
+      return images.map((image) => {
+        const path = joinStoragePath(folder, image.name)
+
+        return { path, imageUrl: getStoragePublicUrl(path) }
+      })
+    }
+  }
+
+  return []
+}
+
+function getExplicitProductFolderCandidates(
+  storageFolder: string | undefined,
+  input: {
+    storeId: string
+    storeName?: string
+    storeSlug: string
+    legacyStoreFolder: string | null
+  },
+) {
+  if (!storageFolder) {
+    return []
+  }
+
+  const normalizedFolder = storageFolder.replace(/^\/+|\/+$/g, '')
+
+  if (normalizedFolder.includes('/')) {
+    return [normalizedFolder]
+  }
+
+  return uniqueValues([
+    `${input.storeSlug}/products/${normalizedFolder}`,
+    input.storeName ? `${input.storeName}/products/${normalizedFolder}` : null,
+    `${input.storeId}/products/${normalizedFolder}`,
+    input.legacyStoreFolder
+      ? `${input.legacyStoreFolder}/products/${normalizedFolder}`
+      : null,
+  ])
+}
+
+async function getLegacyStoreFolder(storeIndex: number) {
+  const rootItems = await listStorageFolder('')
+  const storeFolders = rootItems
+    .filter(isStorageDirectoryCandidate)
+    .sort(compareStorageFiles)
+
+  return storeFolders[storeIndex]?.name ?? null
+}
+
+async function getLegacyProductFolder(
+  legacyStoreFolder: string,
+  productIndex: number,
+) {
+  const productFolder = `${legacyStoreFolder}/products`
+  const productFolders = (await listStorageFolder(productFolder))
+    .filter(isStorageDirectoryCandidate)
+    .sort(compareStorageFiles)
+  const legacyProductFolder = productFolders[productIndex]?.name
+
+  return legacyProductFolder ? `${productFolder}/${legacyProductFolder}` : null
+}
+
+async function listStorageFolder(folder: string) {
+  const normalizedFolder = folder.replace(/^\/+|\/+$/g, '')
+
+  if (storageFolderCache.has(normalizedFolder)) {
+    return storageFolderCache.get(normalizedFolder) ?? []
+  }
+
+  const { data, error } = await supabase.storage
+    .from(SUPABASE_BUCKET)
+    .list(normalizedFolder, {
+      limit: 100,
+      sortBy: { column: 'name', order: 'asc' },
+    })
+
+  if (error) {
+    if (!missingStorageFolders.has(normalizedFolder)) {
+      console.warn(
+        `Nao foi possivel listar imagens do Supabase em "${normalizedFolder}": ${error.message}`,
+      )
+      missingStorageFolders.add(normalizedFolder)
+    }
+
+    storageFolderCache.set(normalizedFolder, [])
+    return []
+  }
+
+  const files: StorageListItem[] = (data ?? [])
+    .filter(
+      (item) => Boolean(item.name) && item.name !== '.emptyFolderPlaceholder',
+    )
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      metadata: item.metadata,
+    }))
+
+  storageFolderCache.set(normalizedFolder, files)
+
+  return files
+}
+
+function isStorageDirectoryCandidate(item: StorageListItem) {
+  return !item.id && item.name !== 'seed' && !isStorageImageFile(item)
+}
+
+function isStorageImageFile(item: StorageListItem) {
+  const mimetype = getStorageMimetype(item.metadata)
+
+  if (mimetype?.startsWith('image/')) {
+    return true
+  }
+
+  if (/\.(avif|gif|jpe?g|png|svg|webp)$/i.test(item.name)) {
+    return true
+  }
+
+  return Boolean(item.id)
+}
+
+function getStorageMimetype(metadata: unknown) {
+  if (!metadata || typeof metadata !== 'object' || !('mimetype' in metadata)) {
+    return null
+  }
+
+  const { mimetype } = metadata as { mimetype?: unknown }
+
+  return typeof mimetype === 'string' ? mimetype.toLowerCase() : null
+}
+
+function compareStorageFiles(left: StorageListItem, right: StorageListItem) {
+  return left.name.localeCompare(right.name, 'pt-BR', { numeric: true })
+}
+
+function getStoragePublicUrl(path: string) {
+  const { data } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(path)
+
+  return data.publicUrl
+}
+
+function joinStoragePath(folder: string, name: string) {
+  const normalizedFolder = folder.replace(/^\/+|\/+$/g, '')
+  const normalizedName = name.replace(/^\/+/g, '')
+
+  return normalizedFolder
+    ? `${normalizedFolder}/${normalizedName}`
+    : normalizedName
+}
+
+function uniqueValues(values: Array<string | null | undefined>) {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))]
+}
+
+function getFallbackProductImages(
+  storeSlug: string,
+  productSlug: string,
+  productName: string,
+): SeedImageReference[] {
+  return [
+    {
+      path: `${getFallbackProductImagePathPrefix(storeSlug, productSlug)}1.svg`,
+      imageUrl: getSeedAssetUrl('product', `${productSlug}-principal`, {
+        label: productName,
+        variant: 'Produto',
+      }),
+    },
+    {
+      path: `${getFallbackProductImagePathPrefix(storeSlug, productSlug)}2.svg`,
+      imageUrl: getSeedAssetUrl('product', `${productSlug}-detalhe`, {
+        label: productName,
+        variant: 'Detalhe',
+      }),
+    },
+  ]
+}
+
+function getFallbackProductImagePathPrefix(
+  storeSlug: string,
+  productSlug: string,
+) {
+  return `seed/${storeSlug}/products/${productSlug}/`
+}
+
+function getSeedAssetUrl(
+  kind: 'store-logo' | 'store-banner' | 'product',
+  slug: string,
+  query: { label: string; variant: string },
+) {
+  const params = new URLSearchParams(query)
+
+  return `/seed/images/${kind}/${slug}.svg?${params.toString()}`
 }
 
 main()

@@ -21,6 +21,7 @@ import { catalogRoutes } from '@/routes/catalog-routes'
 import { categoriesRoutes } from '@/routes/categories-routes'
 import { notificationsRoutes } from '@/routes/notifications-routes'
 import { ordersRoutes } from '@/routes/orders-routes'
+import { seedImageRoutes } from '@/routes/seed-image-routes'
 import { sellerRoutes } from '@/routes/seller-routes'
 import { storesRoutes } from '@/routes/stores-routes'
 import { usersRoutes } from '@/routes/users-routes'
@@ -193,6 +194,7 @@ app.register(authRoutes)
 app.register(usersRoutes)
 app.register(cartRoutes)
 app.register(catalogRoutes)
+app.register(seedImageRoutes)
 app.register(categoriesRoutes)
 app.register(storesRoutes)
 app.register(addressesRoutes)

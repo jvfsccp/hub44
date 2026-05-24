@@ -9,6 +9,12 @@ type ListProductsRequest = FastifyRequest<{
   }
 }>
 
+type ListProductImagesRequest = FastifyRequest<{
+  Params: {
+    productId: string
+  }
+}>
+
 export class CatalogController {
   constructor(private readonly catalogService = new CatalogService()) {}
 
@@ -28,5 +34,20 @@ export class CatalogController {
     const products = await this.catalogService.listProducts(request.query)
 
     return reply.status(200).send({ products })
+  }
+
+  listProductImages = async (
+    request: ListProductImagesRequest,
+    reply: FastifyReply,
+  ) => {
+    const images = await this.catalogService.listProductImages(
+      request.params.productId,
+    )
+
+    if (!images) {
+      return reply.status(404).send({ message: 'Product not found' })
+    }
+
+    return reply.status(200).send({ images })
   }
 }
