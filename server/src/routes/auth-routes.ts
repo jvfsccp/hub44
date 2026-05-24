@@ -5,6 +5,7 @@ import { AuthController } from '@/controllers/auth-controller'
 import { authenticate } from '@/middlewares/authenticate'
 
 const roleSchema = z.enum(['customer', 'seller', 'admin'])
+const registerRoleSchema = z.enum(['customer', 'seller'])
 const publicUserSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -28,13 +29,14 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     '/auth/register',
     {
       schema: {
-        summary: 'Register a new customer user',
+        summary: 'Register a new customer or seller user',
         tags: ['Auth'],
         body: z.object({
           name: z.string().min(2),
           email: z.email(),
           phone: z.string().min(10),
           password: z.string().min(8),
+          role: registerRoleSchema.optional().default('customer'),
         }),
         response: {
           201: z.object({ user: publicUserSchema }),
