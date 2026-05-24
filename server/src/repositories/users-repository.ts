@@ -32,6 +32,7 @@ export class UsersRepository {
     email: string
     passwordHash: string
     phone?: string
+    role?: UserRole
   }) {
     const [user] = await db
       .insert(users)
@@ -40,7 +41,7 @@ export class UsersRepository {
         email: input.email.toLowerCase(),
         passwordHash: input.passwordHash,
         phone: input.phone,
-        role: 'customer',
+        role: input.role ?? 'customer',
       })
       .returning()
 
