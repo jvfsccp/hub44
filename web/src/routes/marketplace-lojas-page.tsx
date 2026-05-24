@@ -12,6 +12,7 @@ import { MarketplaceHeader } from '@/components/marketplace/marketplace-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { resolveApiAssetUrl } from '@/lib/api'
 import { catalogQueryKeys, listProducts, listStores } from '@/lib/catalog'
 
 const fallbackStoreImages = [
@@ -128,6 +129,11 @@ export function MarketplaceLojasPage() {
         <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {stores.map((store, index) => {
             const productCount = productCountByStore.get(store.id) ?? 0
+            const imageUrl = store.bannerUrl
+              ? resolveApiAssetUrl(store.bannerUrl)
+              : store.logoUrl
+                ? resolveApiAssetUrl(store.logoUrl)
+                : fallbackStoreImages[index % fallbackStoreImages.length]
 
             return (
               <article
@@ -135,7 +141,7 @@ export function MarketplaceLojasPage() {
                 className="overflow-hidden rounded-3xl bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
               >
                 <img
-                  src={fallbackStoreImages[index % fallbackStoreImages.length]}
+                  src={imageUrl}
                   alt={store.name}
                   className="h-48 w-full object-cover"
                 />
