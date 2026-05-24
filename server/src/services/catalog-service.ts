@@ -64,4 +64,24 @@ export class CatalogService {
       }
     })
   }
+
+  async listProductImages(productId: string) {
+    const product = await this.productsRepository.findPublicById(productId)
+
+    if (!product) {
+      return null
+    }
+
+    const images =
+      await this.productsRepository.listImagesByProductId(productId)
+
+    return images.map((image) => ({
+      id: image.id,
+      productId: image.productId,
+      imageUrl: image.imageUrl,
+      position: image.position,
+      createdAt: image.createdAt.toISOString(),
+      updatedAt: image.updatedAt.toISOString(),
+    }))
+  }
 }
