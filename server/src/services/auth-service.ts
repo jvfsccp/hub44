@@ -1,6 +1,6 @@
 import { compare, hash } from 'bcryptjs'
 
-import type { User } from '@/repositories/users-repository'
+import type { User, UserRole } from '@/repositories/users-repository'
 import { UsersRepository } from '@/repositories/users-repository'
 
 export class EmailAlreadyInUseError extends Error {
@@ -29,6 +29,7 @@ export class AuthService {
     email: string
     phone: string
     password: string
+    role?: Extract<UserRole, 'customer' | 'seller'>
   }) {
     const existingUser = await this.usersRepository.findByEmail(input.email)
 
@@ -43,6 +44,7 @@ export class AuthService {
       email: input.email,
       phone: input.phone,
       passwordHash,
+      role: input.role ?? 'customer',
     })
   }
 
