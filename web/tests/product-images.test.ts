@@ -29,3 +29,17 @@ test('keeps primary image and all gallery images without duplicates', () => {
     'https://storage.example/detail.png',
   ])
 })
+
+test('resolves relative API product image urls', () => {
+  const urls = getProductImageUrls(
+    {
+      imageUrl: '/seed/images/product/blusa.svg',
+      imageUrls: [],
+    },
+    '/fallback.png',
+  )
+
+  assert.deepEqual(urls, [
+    'http://localhost:3333/seed/images/product/blusa.svg',
+  ])
+})
