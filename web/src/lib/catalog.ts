@@ -1,4 +1,4 @@
-import { apiRequest } from '@/lib/api'
+import { apiRequest, resolveApiAssetUrl } from '@/lib/api'
 
 export type Category = {
   id: string
@@ -43,11 +43,22 @@ export type Product = {
   updatedAt: string
 }
 
+export type ProductImage = {
+  id: string
+  productId: string
+  imageUrl: string
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
 export const catalogQueryKeys = {
   categories: ['catalog', 'categories'] as const,
   stores: ['catalog', 'stores'] as const,
   products: (filters: ProductFilters = {}) =>
     ['catalog', 'products', filters] as const,
+  productImages: (productId: string) =>
+    ['catalog', 'products', productId, 'images'] as const,
 }
 
 type ProductFilters = {
@@ -79,4 +90,17 @@ export async function listProducts(filters: ProductFilters = {}) {
   return apiRequest<{ products: Product[] }>(
     query ? `/products?${query}` : '/products',
   )
+}
+
+export async function listProductImages(productId: string) {
+  const response = await apiRequest<{ images: ProductImage[] }>(
+    `/products/${productId}/images`,
+  )
+
+  return {
+    images: response.images.map((image) => ({
+      ...image,
+      imageUrl: resolveApiAssetUrl(image.imageUrl),
+    })),
+  }
 }

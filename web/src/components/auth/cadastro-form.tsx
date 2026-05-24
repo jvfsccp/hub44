@@ -91,18 +91,12 @@ export function CadastroForm() {
   function handleSubmit(data: CadastroFormData) {
     setFeedback(null)
 
-    if (profile === 'lojista') {
-      setFeedback(
-        'O cadastro de lojista ainda sera liberado no fluxo de onboarding.',
-      )
-      return
-    }
-
     registerMutation.mutate({
       name: data.name,
       email: data.email,
       phone: data.phone,
       password: data.password,
+      role: profile === 'lojista' ? 'seller' : 'customer',
     })
   }
 

@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { ApiError, getAccessToken } from '@/lib/api'
+import { ApiError, getAccessToken, resolveApiAssetUrl } from '@/lib/api'
 import {
   type CartItem,
   cartQueryKeys,
@@ -297,7 +297,11 @@ function CartItemCard({
     <article className="rounded-xl bg-surface-alt/70 p-4">
       <div className="flex flex-col gap-4 sm:flex-row">
         <img
-          src={item.imageUrl ?? productBlazerImage}
+          src={
+            item.imageUrl
+              ? resolveApiAssetUrl(item.imageUrl)
+              : productBlazerImage
+          }
           alt={item.name}
           className="h-22 w-full rounded-xl object-cover sm:h-20 sm:w-20"
         />

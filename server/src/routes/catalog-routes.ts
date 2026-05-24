@@ -56,6 +56,15 @@ const productCatalogSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
 })
+const productImageSchema = z.object({
+  id: z.string(),
+  productId: z.string(),
+  imageUrl: z.string(),
+  position: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+const messageSchema = z.object({ message: z.string() })
 
 export const catalogRoutes: FastifyPluginAsyncZod = async (app) => {
   const controller = new CatalogController()
@@ -104,5 +113,23 @@ export const catalogRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     controller.listProducts,
+  )
+
+  app.get(
+    '/products/:productId/images',
+    {
+      schema: {
+        summary: 'List public product images',
+        tags: ['Catalog'],
+        params: z.object({
+          productId: z.string().min(1),
+        }),
+        response: {
+          200: z.object({ images: z.array(productImageSchema) }),
+          404: messageSchema,
+        },
+      },
+    },
+    controller.listProductImages,
   )
 }

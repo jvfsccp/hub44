@@ -19,6 +19,7 @@ import { useMemo, useState } from 'react'
 import productBlazerImage from '@/assets/stitch/product-blazer.png'
 import { Button } from '@/components/ui/button'
 import { type Address, addressQueryKeys, listAddresses } from '@/lib/addresses'
+import { resolveApiAssetUrl } from '@/lib/api'
 import {
   getOrder,
   type Order,
@@ -223,7 +224,11 @@ export function PedidoDetalhePage() {
                 {order.items.map((item) => (
                   <article key={item.id} className="flex gap-3">
                     <img
-                      src={item.productImageUrl ?? productBlazerImage}
+                      src={
+                        item.productImageUrl
+                          ? resolveApiAssetUrl(item.productImageUrl)
+                          : productBlazerImage
+                      }
                       alt={item.productName}
                       className="size-20 rounded-sm border border-border/70 object-cover"
                     />
