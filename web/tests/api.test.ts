@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { beforeEach, test } from 'node:test'
 
-import { apiRequest, clearAccessToken, setAccessToken } from '../src/lib/api.ts'
+import {
+  apiRequest,
+  clearAccessToken,
+  resolveApiAssetUrl,
+  setAccessToken,
+} from '../src/lib/api.ts'
 
 type CapturedRequest = {
   input: string | URL | Request
@@ -64,4 +69,15 @@ test('does not force JSON content type for FormData uploads', async () => {
 
   assert.equal(headers.has('Content-Type'), false)
   assert.equal(headers.has('Authorization'), false)
+})
+
+test('resolves API-relative asset urls against the configured API base', () => {
+  assert.equal(
+    resolveApiAssetUrl('/seed/images/product/item.svg'),
+    'http://localhost:3333/seed/images/product/item.svg',
+  )
+  assert.equal(
+    resolveApiAssetUrl('https://storage.example/item.png'),
+    'https://storage.example/item.png',
+  )
 })
